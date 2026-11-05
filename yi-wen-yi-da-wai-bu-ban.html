@@ -513,7 +513,7 @@ function loadFromSupabase() {
   var uid = encodeURIComponent(auth.userId);
   return Promise.all([
     sbRest("GET", "quiz_progress?select=card_id,state&user_id=eq." + uid),
-    sbRest("GET", "quiz_sessions?select=day,seconds,count&user_id=eq." + uid)
+    sbRest("GET", "quiz_sessions?select=*&user_id=eq." + uid)
   ]).then(function (rs) {
     loadInFlight = false;
     if (!auth.userId) return false; /* signed out while loading */

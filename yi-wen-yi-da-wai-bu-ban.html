@@ -16,6 +16,7 @@
     --accent:#0a6cff; --accent2:#ff453a; --good:#1fae4e; --warn:#e8890c;
     --shadow:0 10px 34px rgba(28,32,54,.10), 0 1.5px 5px rgba(28,32,54,.06);
     --tabbar:rgba(250,250,252,.78);
+    --hm1:rgba(10,108,255,.26); --hm2:rgba(10,108,255,.48); --hm3:rgba(10,108,255,.72); --hm4:#0a6cff;
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -26,6 +27,7 @@
       --accent:#409cff; --accent2:#ff6961; --good:#30d158; --warn:#ffb340;
       --shadow:0 10px 34px rgba(0,0,0,.45), 0 1.5px 5px rgba(0,0,0,.3);
       --tabbar:rgba(16,16,22,.78);
+      --hm1:rgba(64,156,255,.30); --hm2:rgba(64,156,255,.52); --hm3:rgba(64,156,255,.76); --hm4:#409cff;
     }
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -34,15 +36,14 @@
     margin:0; color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
     background:
-      radial-gradient(1100px 480px at 85% -120px, rgba(10,108,255,.14), transparent 60%),
-      radial-gradient(900px 420px at -10% 30%, rgba(255,69,58,.07), transparent 55%),
+      radial-gradient(1000px 520px at 50% -180px, rgba(10,108,255,.10), transparent 62%),
       var(--bg);
     background-attachment:fixed;
     line-height:1.55;
   }
   button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
   button:focus-visible, a:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
-  .wrap{ max-width:680px; margin:0 auto; padding:0 16px calc(108px + env(safe-area-inset-bottom)); }
+  .wrap{ max-width:680px; margin:0 auto; padding:0 18px calc(108px + env(safe-area-inset-bottom)); }
   .glass{
     background:var(--glass); border:1px solid var(--border); border-radius:20px;
     backdrop-filter:blur(22px) saturate(1.7); -webkit-backdrop-filter:blur(22px) saturate(1.7);
@@ -63,17 +64,17 @@
   button.pill{ font-family:inherit; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   button.pill.off{ color:var(--ink); border-color:var(--accent2); }
 
-  h1.page{ font-size:26px; margin:10px 2px 2px; letter-spacing:.01em; }
+  h1.page{ font-size:32px; font-weight:800; font-family:inherit; margin:18px 2px 4px; letter-spacing:-.02em; line-height:1.3; }
   .sub{ margin:0 2px 14px; font-size:13px; color:var(--dim); }
 
   /* ---------- home cards ---------- */
-  .card{ padding:18px; margin-top:14px; }
-  .card h2{ margin:0; font-size:19px; }
+  .card{ padding:22px 20px; margin-top:16px; }
+  .card h2{ margin:0; font-size:20px; font-weight:800; letter-spacing:-.01em; }
   .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
   .chip{ border-radius:999px; background:var(--fill); padding:4px 10px; font-size:12px; font-weight:600; color:var(--dim); }
   .chip.hot{ background:rgba(255,69,58,.13); color:var(--accent2); }
   .bigbtn{
-    display:block; width:100%; margin-top:14px; padding:15px; border-radius:16px;
+    display:block; width:100%; margin-top:14px; padding:16px; border-radius:999px;
     background:var(--accent); color:#fff; font-size:16px; font-weight:800; text-align:center;
     box-shadow:0 8px 22px rgba(10,108,255,.32);
   }
@@ -114,7 +115,7 @@
   .resume-row{ display:flex; gap:12px; align-items:center; padding:11px 0; border-bottom:1px solid var(--border); }
   .resume-row:last-child{ border-bottom:0; }
   .resume-row .grow{ flex:1; min-width:0; }
-  .minibtn{ flex:none; border-radius:11px; background:var(--accent); color:#fff; font-size:13px; font-weight:700; padding:8px 14px; }
+  .minibtn{ flex:none; border-radius:999px; background:var(--accent); color:#fff; font-size:13px; font-weight:700; padding:8px 15px; }
   .minibtn.grey{ background:var(--fill); color:var(--dim); }
 
   .abstrip{ display:flex; align-items:center; gap:12px; }
@@ -225,9 +226,37 @@
   }
   .toast.show{ opacity:1; transform:translate(-50%, 0); }
   .boot{ padding:80px 20px; text-align:center; color:var(--dim); font-size:14px; }
-  @keyframes rise{ from{ opacity:0; transform:translateY(7px);} to{ opacity:1; transform:none;} }
-  .rise{ animation:rise .28s ease both; }
-  @media (prefers-reduced-motion: reduce){ .rise{ animation:none; } html{ scroll-behavior:auto; } }
+  @keyframes rise{ from{ opacity:0; } to{ opacity:1; } }
+  .rise{ animation:rise .3s ease both; }
+
+  /* ---------- product-page polish: big type, airy spacing, gentle reveal ---------- */
+  h2.serif{ font-family:inherit; }
+  .card h2.hero-title{ font-size:34px; line-height:1.3; font-weight:800; letter-spacing:-.02em; margin:10px 0 0; }
+  .hero-title .ha{ color:var(--accent); }
+  .reveal{ opacity:0; transform:translateY(16px); }
+  .reveal.in{ opacity:1; transform:none; transition:opacity .6s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.22,1,.36,1); transition-delay:var(--rd,0ms); }
+  .modebtn.focus{ display:block; width:100%; margin-top:10px; background:rgba(10,108,255,.10); color:var(--accent); }
+  .modebtn.focus small{ color:var(--accent); opacity:.78; }
+
+  /* ---------- study heatmap ---------- */
+  .hm-months{ display:flex; gap:3px; margin:12px 0 4px 17px; }
+  .hm-months span{ flex:1; font-size:9px; color:var(--dim); white-space:nowrap; overflow:visible; }
+  .hm{ display:flex; gap:3px; }
+  .hm .wd{ flex:none; width:14px; display:flex; flex-direction:column; gap:3px; }
+  .hm .wd span{ flex:1; font-size:9px; color:var(--dim); display:flex; align-items:center; }
+  .hm .wk{ flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .hm .cell{ aspect-ratio:1/1; border-radius:3px; background:var(--fill); }
+  .hm .cell.l1{ background:var(--hm1); } .hm .cell.l2{ background:var(--hm2); }
+  .hm .cell.l3{ background:var(--hm3); } .hm .cell.l4{ background:var(--hm4); }
+  .hm .cell.future{ background:transparent; }
+  .hm .cell.today{ box-shadow:0 0 0 1.5px var(--accent); }
+  .hm-legend{ display:flex; align-items:center; gap:4px; margin-top:10px; font-size:10.5px; color:var(--dim); flex-wrap:wrap; }
+  .hm-legend .cell{ width:11px; height:11px; border-radius:3px; background:var(--fill); flex:none; }
+  .hm-legend .l1{ background:var(--hm1); } .hm-legend .l2{ background:var(--hm2); }
+  .hm-legend .l3{ background:var(--hm3); } .hm-legend .l4{ background:var(--hm4); }
+  .hm-legend .sum{ margin-left:auto; font-weight:600; }
+
+  @media (prefers-reduced-motion: reduce){ .rise{ animation:none; } .reveal{ opacity:1; transform:none; } html{ scroll-behavior:auto; } }
 </style>
 </head>
 <body>
@@ -814,6 +843,7 @@ function recordAnswer(card, result, confidence, cause) {
   }
   state.progress[card.id] = {
     r: result, s: streak, a: (prev ? prev.a : 0) + 1, m: mastered ? 1 : 0,
+    tn: (prev && prev.tn ? prev.tn : 0) + 1, kw: (prev && prev.kw ? prev.kw : 0) + (result === "known" ? 1 : 0),
     ls: now, nr: nr,
     cf: confidence != null ? confidence : (prev ? prev.cf : null),
     cs: result === "known" ? null : (cause != null ? cause : (prev ? prev.cs : null))
@@ -836,6 +866,45 @@ function currentStreak() {
   if (!set[cur]) cur = dateAdd(cur, -1);
   while (set[cur]) { n++; cur = dateAdd(cur, -1); }
   return n;
+}
+/* ---------------- study heatmap (home) ----------------
+   GitHub-style calendar of the last 18 weeks, one cell per study day
+   (05:00 boundary, same as everywhere else). Intensity comes from the
+   synced per-day drill seconds in state.days; a day with answers but
+   no recorded seconds still lights at the lowest level via
+   studiedDates(). Rows run Monday→Sunday. */
+function heatmapHtml() {
+  var WEEKS = 18;
+  var today = todayStr();
+  var tp = today.split("-").map(Number);
+  var rowToday = (new Date(Date.UTC(tp[0], tp[1] - 1, tp[2])).getUTCDay() + 6) % 7;
+  var start = dateAdd(today, -((WEEKS - 1) * 7 + rowToday));
+  var studied = studiedDates();
+  var months = "", grid = "", totalSec = 0, activeDays = 0, prevMonth = "";
+  for (var w = 0; w < WEEKS; w++) {
+    var colFirst = dateAdd(start, w * 7);
+    var mo = colFirst.split("-")[1];
+    months += "<span>" + (mo !== prevMonth ? Number(mo) + "月" : "") + "</span>";
+    prevMonth = mo;
+    grid += '<div class="wk">';
+    for (var r = 0; r < 7; r++) {
+      var d = dateAdd(start, w * 7 + r);
+      if (d > today) { grid += '<div class="cell future"></div>'; continue; }
+      var rec = state.days[d] || { sec: 0, n: 0 };
+      var min = (rec.sec || 0) / 60;
+      var lv = min >= 45 ? 4 : min >= 25 ? 3 : min >= 10 ? 2 : (min > 0 || (rec.n || 0) > 0 || studied[d]) ? 1 : 0;
+      totalSec += rec.sec || 0;
+      if (lv > 0) activeDays++;
+      var label = fmtDayShort(d) + " ・ " + (rec.sec ? Math.round(rec.sec / 60) + "分" : "0分") + (rec.n ? " ・ " + rec.n + "問" : "");
+      grid += '<div class="cell l' + lv + (d === today ? " today" : "") + '" title="' + esc(label) + '"></div>';
+    }
+    grid += "</div>";
+  }
+  var wd = '<div class="wd"><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span><span></span></div>';
+  var legend = '<div class="hm-legend"><span>少ない</span><span class="cell"></span><span class="cell l1"></span><span class="cell l2"></span><span class="cell l3"></span><span class="cell l4"></span><span>多い</span>' +
+    '<span class="sum">直近' + WEEKS + "週 ・ 合計 " + esc(fmtDur(totalSec)) + " ・ 勉強した日 " + activeDays + "日</span></div>";
+  return '<section class="glass card"><h2 style="font-size:16.5px">学習の記録</h2>' +
+    '<div class="hm-months">' + months + '</div><div class="hm">' + wd + grid + "</div>" + legend + "</section>";
 }
 function scopeCards(deck) { return deck === "all" ? CARDS.slice() : CARDS.filter(function (c) { return c.d === deck; }); }
 function cardStats(list) {
@@ -905,6 +974,63 @@ function buildTodayPlan(deckSel) {
   var duePart = picked.slice(0, nDue), rest = interleaveByChapter(picked.slice(nDue));
   return { items: duePart.concat(rest), target: target, breakdown: { due: nDueTotal, weak: nWeak, fresh: nFresh, review: nReview } };
 }
+/* ---------------- weak-topic focus drill ----------------
+   Per-topic accuracy from the cumulative counters recordAnswer keeps
+   (tn = graded attempts, kw = of those answered「分かった」). Cards
+   graded before the counters existed fall back to their latest result
+   with weight 1, so the ranking works on day one and sharpens as new
+   answers accumulate. */
+function topicRates(deck) {
+  var agg = {};
+  scopeCards(deck).forEach(function (c) {
+    var key = c.ch + "::" + baseTopic(c.tp);
+    var a = agg[key];
+    if (!a) { a = agg[key] = { ch: c.ch, tp: baseTopic(c.tp), cards: [], att: 0, tn: 0, kw: 0, weak: 0, missedSure: 0, rate: 1 }; }
+    a.cards.push(c);
+    var p = prog(c.id);
+    if (p && p.a > 0) {
+      a.att++;
+      if (p.tn) { a.tn += p.tn; a.kw += p.kw || 0; }
+      else { a.tn += 1; a.kw += p.r === "known" ? 1 : 0; }
+      if (isWeak(c)) a.weak++;
+      if (p.r === "missed" && p.cf === "sure") a.missedSure++;
+    }
+  });
+  return Object.keys(agg).map(function (k) {
+    var a = agg[k];
+    a.rate = a.tn ? a.kw / a.tn : 1;
+    return a;
+  });
+}
+/* One session (max 20) drawn from the lowest-accuracy topics: topics
+   qualify when they still hold weak cards or their accuracy is under
+   70%. Weak cards come first (自信ありでミス → × → あやふや), then the
+   topic's other attempted-but-unmastered cards, worst topic first. */
+function buildWeakFocusCards(deck) {
+  var topics = topicRates(deck).filter(function (t) { return t.att > 0 && (t.weak > 0 || t.rate < 0.7); });
+  topics.sort(function (a, b) { return a.rate - b.rate || b.weak - a.weak || b.missedSure - a.missedSure; });
+  var picked = [], used = {};
+  function push(list) {
+    for (var i = 0; i < list.length && picked.length < 20; i++) {
+      var c = list[i];
+      if (used[c.id]) continue;
+      used[c.id] = true; picked.push(c);
+    }
+  }
+  topics.forEach(function (t) {
+    push(t.cards.filter(function (c) { return isWeak(c); }).sort(function (a, b) {
+      var pa = prog(a.id), pb = prog(b.id);
+      var wa = pa.r === "missed" ? (pa.cf === "sure" ? 0 : 1) : 2;
+      var wb = pb.r === "missed" ? (pb.cf === "sure" ? 0 : 1) : 2;
+      return wa - wb || (pb.ls || 0) - (pa.ls || 0);
+    }));
+  });
+  topics.forEach(function (t) {
+    push(t.cards.filter(function (c) { var p = prog(c.id); return p && p.a > 0 && !p.m; })
+      .sort(function (a, b) { return (prog(b.id).ls || 0) - (prog(a.id).ls || 0); }));
+  });
+  return picked;
+}
 /* ---------------- view state ---------------- */
 var view = { tab: "home" }; /* home | topics | topic | dict | progress | session | done */
 var homeDeck = "all", homeOrder = "sequential", homeRank = "all";
@@ -913,6 +1039,40 @@ var dictShown = 24; /* browse mode: how many dictionary entries are in the DOM (
 var appEl = function () { return document.getElementById("app"); };
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]; }); }
 var toastTimer = null;
+/* Gentle entrance for the main tab views: cards and page titles start
+   slightly lowered and transparent, then ease in (staggered) as they
+   enter the viewport. Called at the end of render() and after the
+   dictionary appends a chunk. Anything already on screen is revealed
+   immediately, and a timed re-check guarantees nothing can be left
+   hidden if the observer never fires. */
+var revealIO = null;
+function armReveal() {
+  var els = appEl().querySelectorAll("section.card:not(.reveal), h1.page:not(.reveal)");
+  var fresh = [];
+  for (var i = 0; i < els.length; i++) { els[i].classList.add("reveal"); fresh.push(els[i]); }
+  if (!fresh.length) return;
+  var reduced = false;
+  try { reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) {}
+  fresh.forEach(function (el, i) {
+    el.style.setProperty("--rd", Math.min(i * 70, 350) + "ms");
+    if (reduced || !("IntersectionObserver" in window)) { el.classList.add("in"); return; }
+    var r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight && r.bottom > 0) { el.classList.add("in"); return; }
+    if (!revealIO) {
+      revealIO = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("in"); revealIO.unobserve(en.target); } });
+      }, { threshold: 0.05, rootMargin: "0px 0px 8% 0px" });
+    }
+    revealIO.observe(el);
+  });
+  setTimeout(function () {
+    fresh.forEach(function (el) {
+      if (el.classList.contains("in")) return;
+      var r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 1.5 && r.bottom > -window.innerHeight * 0.5) el.classList.add("in");
+    });
+  }, 1600);
+}
 function toast(msg) {
   var t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -1040,6 +1200,7 @@ function render() {
   else if (view.tab === "progress") renderProgress();
   else if (view.tab === "session") renderSession();
   else if (view.tab === "done") renderDone();
+  armReveal();
 }
 
 /* ---------------- home ---------------- */
@@ -1084,6 +1245,7 @@ function renderHome() {
   var rankDefs = [ { k: "all", label: "全ランク" }, { k: "AB", label: "A・Bのみ" }, { k: "A", label: "Aのみ" }, { k: "B", label: "Bのみ" }, { k: "C", label: "Cのみ" } ];
   var dueCount = scope.filter(function (c) { return isDue(c, now); }).length;
   var weakCount = scope.filter(function (c) { return isWeak(c); }).length;
+  var focusCards = buildWeakFocusCards(homeDeck);
 
   var html = '<div class="wrap rise">';
   html += '<div class="topbar">' + syncPillHtml();
@@ -1098,8 +1260,12 @@ function renderHome() {
       '<button type="button" class="bigbtn ghost" id="btn-claim-no">引き継がない</button></section>';
   }
 
-  html += '<section class="glass card"><h2 class="serif">今日のタスク</h2>' +
-    '<p class="small dim" style="margin:6px 0 0">範囲を選ばなくて大丈夫です。復習期限→苦手→新規（A・B優先で章を混ぜて出題）の順に、今日やる分を自動で組んであります。</p>' +
+  var heroDate = "";
+  try { heroDate = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date()); } catch (e) {}
+  html += '<section class="glass card">' +
+    (heroDate ? '<div class="tiny dim b" style="letter-spacing:.1em">' + esc(heroDate) + "</div>" : "") +
+    '<h2 class="hero-title">' + (plan.items.length ? '今日のタスクは<br><span class="ha">' + plan.items.length + "問</span>です。" : "今日の分は<br>完了しています。") + "</h2>" +
+    '<p class="small dim" style="margin:10px 0 0">範囲を選ばなくて大丈夫です。復習期限→苦手→新規（A・B優先で章を混ぜて出題）の順に、今日やる分を自動で組んであります。</p>' +
     '<div class="chips">' + planChips + "</div>" +
     '<button type="button" class="bigbtn" id="btn-today" ' + (plan.items.length ? "" : "disabled") + ">" +
     (plan.items.length ? "今日のタスクを始める（" + plan.items.length + "問）" : "今日のタスクは完了") + "</button></section>";
@@ -1124,6 +1290,8 @@ function renderHome() {
     '<div style="flex:1.2"><div class="bar"><i class="good" style="width:' + (ab.total ? Math.round(ab.mastered / ab.total * 100) : 0) + '%"></i></div>' +
     '<div class="tiny dim" style="margin-top:5px">全体では 定着' + st.mastered + " ・ 回答済み" + st.attempted + " / " + st.total + "問</div></div></div></section>";
 
+  html += heatmapHtml();
+
   html += '<section class="glass card"><div class="seg" role="tablist" aria-label="デッキ切替">' +
     ["all", "kiso", "jissen", "keisan"].map(function (d) {
       return '<button type="button" data-deck="' + d + '" class="' + (homeDeck === d ? "sel" : "") + '">' + DECK_LABELS[d] + "</button>";
@@ -1142,7 +1310,9 @@ function renderHome() {
     '<button type="button" class="modebtn" id="btn-review" ' + (dueCount ? "" : "disabled") + ">復習だけ<small>期限が来た " + dueCount + "問</small></button>" +
     '<button type="button" class="modebtn" id="btn-weak" ' + (weakCount ? "" : "disabled") + ">苦手だけ<small>×・あやふや " + weakCount + "問</small></button>" +
     '<button type="button" class="modebtn exam" id="btn-exam">本番形式<small>選択問題のみ・最後に一括採点</small></button>' +
-    "</div></section>";
+    "</div>" +
+    '<button type="button" class="modebtn focus" id="btn-focus" ' + (focusCards.length ? "" : "disabled") + ">弱点集中ドリル<small>" +
+    (focusCards.length ? "正答率の低い論点から自動で " + focusCards.length + "問を編成" : "対象の論点はまだありません") + "</small></button></section>";
 
   if (weakTopics.length) {
     html += '<section class="glass card"><h2 style="font-size:16.5px">苦手な論点</h2>';
@@ -1200,6 +1370,9 @@ function renderHome() {
   });
   document.getElementById("btn-exam").addEventListener("click", function () {
     startSession({ mode: "all", order: homeOrder, rank: homeRank === "all" ? null : homeRank, deck: homeDeck, exam: true, label: "本番形式" });
+  });
+  document.getElementById("btn-focus").addEventListener("click", function () {
+    startSession({ mode: "all", order: "sequential", deck: homeDeck, cardIds: focusCards.map(function (c) { return c.id; }), label: "弱点集中ドリル" });
   });
   var chb = document.querySelectorAll("[data-chapter]");
   for (var d2 = 0; d2 < chb.length; d2++) chb[d2].addEventListener("click", function () {
@@ -1462,6 +1635,7 @@ function renderDict() {
     var total = DATA.dict.length + DATA.kdict.length;
     if (dictShown >= total) wrap.remove();
     else wrap.querySelector("button").textContent = "もっと表示（残り" + (total - dictShown) + "件）";
+    armReveal();
   });
   var sd = document.getElementById("btn-search-drill");
   if (sd) sd.addEventListener("click", function () {

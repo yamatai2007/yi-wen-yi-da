@@ -4,6 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#eef0f4" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#08080d" media="(prefers-color-scheme: dark)" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="一問一答" />
 <link rel="icon" href="data:," />
 <title>一問一答 外部版</title>
 <style>
@@ -32,6 +39,9 @@
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html{ scroll-behavior:smooth; }
+  /* The view slide (below) translates .wrap horizontally; never let that
+     widen the page or flash a horizontal scrollbar mid-transition. */
+  html, body{ overflow-x:hidden; overflow-x:clip; }
   body{
     margin:0; color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
@@ -233,17 +243,20 @@
   }
   .toast.show{ opacity:1; transform:translate(-50%, 0); }
   .boot{ padding:80px 20px; text-align:center; color:var(--dim); font-size:14px; }
-  /* .rise is kept as a class hook only: view containers render instantly
-     at full opacity. An opacity fade on every re-render, composited over
-     the translucent glass surfaces, is what made the previous view ghost
-     through the new one (double display) after each switch on iOS. */
+  /* .rise is kept as a class hook only. View switches slide the incoming
+     view in with transform ONLY (see applyViewSlide in the script): the
+     old view is removed from the DOM instantly and the new one is at
+     opacity 1 for the whole slide, so the two views are never composited
+     over each other. An opacity fade, composited over the translucent
+     glass surfaces, is what made the previous view ghost through the new
+     one (double display) after each switch on iOS — that stays banned. */
 
   /* ---------- product-page polish: big type, airy spacing, gentle reveal ---------- */
   h2.serif{ font-family:inherit; }
   .card h2.hero-title{ font-size:34px; line-height:1.3; font-weight:800; letter-spacing:-.02em; margin:10px 0 0; }
   .hero-title .ha{ color:var(--accent); }
-  /* No entrance reveal either: cards are never started hidden/offset and
-     faded in. Every view paints its final frame immediately. */
+  /* No per-card entrance reveal either: cards are never started hidden
+     or faded in. The only switch motion is the whole-view slide. */
   .modebtn.focus{ display:block; width:100%; margin-top:10px; background:rgba(10,108,255,.10); color:var(--accent); }
   .modebtn.focus small{ color:var(--accent); opacity:.78; }
 
@@ -1050,20 +1063,79 @@ function buildWeakFocusCards(deck) {
 /* ---------------- view state ---------------- */
 var view = { tab: "home" }; /* home | topics | topic | dict | progress | session | done */
 var homeDeck = "all", homeOrder = "sequential", homeRank = "all";
+var resumesOpen = false; /* home: with 3+ parked drills the resume list starts collapsed behind a 「中断中 N件」 toggle */
 var topicChapter = null, dictQuery = "", dictResults = null, dictDraft = "";
 var dictShown = 24; /* browse mode: how many dictionary entries are in the DOM (grows via もっと表示) */
 var appEl = function () { return document.getElementById("app"); };
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]; }); }
 var toastTimer = null;
-/* View switches render instantly at full opacity. There is deliberately
-   no entrance animation (no fade, no rise, no staggered reveal) on any
-   view, on first mount or on re-renders: animating opacity/transform
-   over the translucent glass surfaces is what made the old and new
-   views ghost through each other (the reported double display), and a
-   first-mount-only exception still left the very first switches — the
-   ones a user hits right after opening the app — ghosting. render()
-   still calls armReveal() at its end; it is now a no-op. */
+/* View switches slide, but never cross-fade. The old view is removed
+   from the DOM the instant the new one renders, and the new view —
+   opacity 1 throughout — is carried in by transform (horizontal slide)
+   alone. The two views are never on screen together and nothing is
+   ever translucent mid-switch, which is what rules out the reported
+   ghosting (double display): that came from fading opacity over the
+   translucent glass surfaces, so opacity animation on view switches
+   stays banned. render() still calls armReveal() at its end; it is a
+   no-op kept for the old call site. */
 function armReveal() {}
+/* ---------------- view slide transition (transform only) ----------------
+   applyViewSlide() runs at the end of every view render. It compares
+   the new view signature with the previously rendered one: a changed
+   signature is a navigation (tab switch, drill-down, back, session
+   start/finish, chapter switch inside 論点) and the fresh .wrap slides
+   in from the side the navigation points to. An unchanged signature
+   is an in-place re-render (typing in search, picking a deck on home,
+   revealing an answer, a background sync) and never slides. Callers
+   that know a switch is coming but keep the same signature — the next
+   question in a session, a committed swipe — queue it explicitly with
+   queueSlide(). prefers-reduced-motion disables the slide entirely. */
+var lastViewSig = null, pendingSlide = null, slideToken = 0;
+var VIEW_DEPTH = { auth: 0, newpw: 1, home: 0, topics: 0, dict: 0, progress: 0, topic: 1, random: 1, session: 2, done: 3 };
+function viewSig() { return { tab: view.tab, ch: view.chapter || "", tp: view.topic || "", tch: topicChapter || "" }; }
+function sigKey(s) { return s.tab + "|" + s.ch + "|" + s.tp + "|" + s.tch; }
+function slideDirBetween(prev, cur) {
+  if (cur.tab === "topic" && prev.tab !== "topic") return 1;
+  if (prev.tab === "topic" && cur.tab !== "topic") return -1;
+  var pi = tabIndexOf(prev.tab), ci = tabIndexOf(cur.tab);
+  if (pi >= 0 && ci >= 0 && pi !== ci) return ci > pi ? 1 : -1;
+  if (prev.tab !== cur.tab) {
+    var pd = VIEW_DEPTH[prev.tab] || 0, cd = VIEW_DEPTH[cur.tab] || 0;
+    if (cd !== pd) return cd > pd ? 1 : -1;
+    return 1;
+  }
+  if (prev.tch !== cur.tch) {
+    var po = CHAPTER_ORDER.indexOf(prev.tch), co = CHAPTER_ORDER.indexOf(cur.tch);
+    if (po >= 0 && co >= 0 && po !== co) return co > po ? 1 : -1;
+    return cur.tch ? 1 : -1;
+  }
+  return 0;
+}
+function queueSlide(dir, fromX) { pendingSlide = { dir: dir, fromX: (fromX == null ? null : fromX) }; }
+function applyViewSlide() {
+  var sig = viewSig();
+  var prev = lastViewSig; lastViewSig = sig;
+  var queued = pendingSlide; pendingSlide = null;
+  var wrap = appEl().querySelector(".wrap");
+  if (!wrap) return;
+  var dir = 0, fromX = null;
+  if (queued && queued.dir) { dir = queued.dir; fromX = queued.fromX; }
+  else if (prev && sigKey(prev) !== sigKey(sig)) dir = slideDirBetween(prev, sig);
+  if (!dir || reducedMotion()) return;
+  var W = window.innerWidth || 360;
+  var startX = fromX != null ? fromX : dir * W;
+  if (!startX) return;
+  var token = ++slideToken;
+  wrap.style.transition = "none";
+  wrap.style.transform = "translateX(" + startX + "px)";
+  void wrap.offsetWidth;
+  wrap.style.transition = "transform .34s cubic-bezier(.22,1,.36,1)";
+  wrap.style.transform = "translateX(0px)";
+  setTimeout(function () {
+    if (token !== slideToken) return;
+    wrap.style.transition = ""; wrap.style.transform = "";
+  }, 380);
+}
 function toast(msg) {
   var t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("show");
@@ -1253,23 +1325,17 @@ function dragPill(st, eff) {
   });
 }
 function commitSwipe(st, dir, target) {
-  var w = st.wrap, W = window.innerWidth, reduced = reducedMotion();
-  var finish = function () {
-    /* The incoming view is shown instantly, with no slide-in transform:
-       animating the new page in over the outgoing one overlapped the
-       two views (double display) for the length of the animation. */
-    goTab(TAB_ORDER[target]);
-  };
-  if (reduced) { finish(); return; }
-  w.style.transition = "transform .18s ease-in";
-  w.style.transform = "translateX(" + (-dir * W) + "px)";
-  var bar = document.querySelector(".tabbar");
-  if (bar) {
-    var pill = bar.querySelector(".tabpill");
-    var nb = bar.querySelectorAll("button")[target];
-    if (pill && nb) { pill.style.transition = "left .18s ease-in, width .18s ease-in, opacity .2s"; pillSet(pill, pillGeom(nb)); }
+  /* The old view is hidden the instant the new one renders — the two
+     are never on screen together. The new view starts at the offset it
+     would have as the dragged page's neighbour (full opacity,
+     transform only) and slides the rest of the way in, so the switch
+     continues the finger's motion instead of cutting. The tab pill is
+     laid out by bindTabs()/layoutTabPill() during the render. */
+  if (!reducedMotion()) {
+    var W = window.innerWidth || 360;
+    queueSlide(dir, dir * Math.max(W - Math.abs(st.dx), 0));
   }
-  setTimeout(finish, 185);
+  goTab(TAB_ORDER[target]);
 }
 document.addEventListener("touchstart", function (e) {
   if (e.touches.length !== 1) { swipeState = null; return; }
@@ -1285,6 +1351,9 @@ document.addEventListener("touchstart", function (e) {
   if (swipeInHScroller(target)) return;
   var wrap = appEl().querySelector(".wrap");
   if (!wrap) return;
+  /* A touch takes the page over from any slide-in still in flight:
+     cancel it so the drag below tracks the finger 1:1. */
+  slideToken++; wrap.style.transition = ""; wrap.style.transform = "";
   swipeState = { id: t.identifier, sx: t.clientX, sy: t.clientY, dx: 0, lock: null, wrap: wrap, idx: idx };
   wrap.style.touchAction = "pan-y";
 }, { passive: true });
@@ -1447,8 +1516,23 @@ function renderHome() {
     (plan.items.length ? "今日のタスクを始める（" + plan.items.length + "問）" : "今日のタスクは完了") + "</button></section>";
 
   if (resumes.length) {
-    html += '<section class="glass card"><h2 style="font-size:16.5px">続きから再開</h2>';
-    resumes.slice(0, 3).forEach(function (r, i) {
+    /* 3+ parked drills would push the whole home down, so they collapse
+       behind a 「中断中 N件」 toggle; 1–2 stay listed directly as before.
+       Expanded shows every parked drill (the old slice(0, 3) silently
+       hid the 4th and beyond). */
+    var manyResumes = resumes.length >= 3;
+    var showResumes = !manyResumes || resumesOpen;
+    html += '<section class="glass card">';
+    if (manyResumes) {
+      html += '<button type="button" id="btn-resumes-toggle" aria-expanded="' + (showResumes ? "true" : "false") + '" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:2px 0">' +
+        '<span style="flex:1;min-width:0"><span class="b" style="font-size:16.5px">中断中 ' + resumes.length + '件</span>' +
+        '<span class="tiny dim" style="display:block;margin-top:2px">' + (showResumes ? "タップで閉じます" : "タップで開いて、再開するドリルを選べます") + '</span></span>' +
+        '<span class="chev" aria-hidden="true" style="display:inline-block;transition:transform .25s' + (showResumes ? ";transform:rotate(90deg)" : "") + '">›</span></button>';
+    } else {
+      html += '<h2 style="font-size:16.5px">続きから再開</h2>';
+    }
+    resumes.forEach(function (r, i) {
+      if (!showResumes) return;
       var remain = r.cardIds.length - r.index;
       html += '<div class="resume-row"><div class="grow"><div class="b" style="font-size:14.5px">' + esc(r.label || "ドリル") + "</div>" +
         '<div class="tiny dim">残り' + remain + "問（" + r.cardIds.length + "問中" + r.index + "問済み）" +
@@ -1510,6 +1594,7 @@ function renderHome() {
   });
   html += "</section></div>" + tabbarHtml("home");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
 
   bindSyncPill();
@@ -1520,6 +1605,8 @@ function renderHome() {
   document.getElementById("btn-today").addEventListener("click", function () {
     startSession({ mode: "all", order: "sequential", deck: homeDeck, cardIds: plan.items.map(function (c) { return c.id; }), label: "今日のタスク" });
   });
+  var brt = document.getElementById("btn-resumes-toggle");
+  if (brt) brt.addEventListener("click", function () { resumesOpen = !resumesOpen; renderHome(); });
   var rb = document.querySelectorAll("[data-resume]");
   for (var i = 0; i < rb.length; i++) rb[i].addEventListener("click", function () {
     var r = resumes[Number(this.getAttribute("data-resume"))];
@@ -1600,9 +1687,10 @@ function renderTopics() {
   });
   html += "</section></div>" + tabbarHtml("topics");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   var bs = document.querySelectorAll("[data-tch]");
-  for (var i = 0; i < bs.length; i++) bs[i].addEventListener("click", function () { topicChapter = this.getAttribute("data-tch"); renderTopics(); });
+  for (var i = 0; i < bs.length; i++) bs[i].addEventListener("click", function () { topicChapter = this.getAttribute("data-tch"); render(); });
   var os = document.querySelectorAll("[data-opentopic]");
   for (var j = 0; j < os.length; j++) os[j].addEventListener("click", function () {
     view = { tab: "topic", chapter: topicChapter, topic: this.getAttribute("data-opentopic") }; render(); window.scrollTo(0, 0);
@@ -1646,6 +1734,7 @@ function renderTopicDetail() {
   });
   html += "</section></div>" + tabbarHtml("topics");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   document.getElementById("btn-back").addEventListener("click", function () { topicChapter = ch; view = { tab: "topics" }; render(); });
   document.getElementById("btn-topic-drill").addEventListener("click", function () {
@@ -1776,6 +1865,7 @@ function renderDict() {
   }
   html += "</div></div>" + tabbarHtml("dict");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   /* Keep the unsubmitted keyword in a draft on every keystroke (the same
      pattern the login form uses with authDraft), and give the focus back
@@ -1877,6 +1967,7 @@ function renderProgress() {
     (legacyAvailable ? '<button type="button" class="bigbtn" id="btn-claim2">以前の記録をこのアカウントに引き継ぐ</button>' : "") + '</section>' +
     "</div>" + tabbarHtml("progress");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   bindSyncPill();
   document.getElementById("btn-logout").addEventListener("click", signOut);
@@ -1956,6 +2047,7 @@ function renderRandomSetup() {
     '<button type="button" class="bigbtn" id="btn-rnd-start" ' + (take ? "" : "disabled") + ">ランダムで始める（" + take + "問）</button></section>";
   html += "</div>" + tabbarHtml("home");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   document.getElementById("btn-rnd-back").addEventListener("click", function () { view = { tab: "home" }; render(); window.scrollTo(0, 0); });
   var cs = document.querySelectorAll("[data-rcount]");
@@ -2129,7 +2221,7 @@ function advance(grade, opts) {
   S.idx += 1;
   S.revealed = false; S.picked = null; S.pickedChoice = null; S.confidence = null; S.causeFor = null; S.figOpen = false; S.kwChecked = {};
   persistSnapshot();
-  if (S.idx >= S.cards.length) finishSession(); else { renderSession(); window.scrollTo(0, 0); }
+  if (S.idx >= S.cards.length) finishSession(); else { queueSlide(1); renderSession(); window.scrollTo(0, 0); }
 }
 function examPick(label) {
   var card = S.cards[S.idx];
@@ -2141,14 +2233,14 @@ function examPick(label) {
   S.examPicks.push({ id: card.id, picked: label });
   S.idx += 1;
   persistSnapshot();
-  if (S.idx >= S.cards.length) finishSession(); else { renderSession(); window.scrollTo(0, 0); }
+  if (S.idx >= S.cards.length) finishSession(); else { queueSlide(1); renderSession(); window.scrollTo(0, 0); }
 }
 function examSkip() {
   var card = S.cards[S.idx];
   S.examPicks.push({ id: card.id, picked: null });
   S.idx += 1;
   persistSnapshot();
-  if (S.idx >= S.cards.length) finishSession(); else { renderSession(); window.scrollTo(0, 0); }
+  if (S.idx >= S.cards.length) finishSession(); else { queueSlide(1); renderSession(); window.scrollTo(0, 0); }
 }
 function finishSession() {
   flushStudyTime();
@@ -2174,6 +2266,23 @@ function exitSession() {
   render();
   window.scrollTo(0, rs);
   toast("中断しました。ここまでの進捗は保存済みで、ホームの「続きから再開」から続けられます");
+}
+/* 「この論点の辞書を開く」(answer box): park the session exactly like ✕
+   does — study time flushed, snapshot saved, resumable from home — then
+   jump straight to that topic's dictionary page. The answer itself is
+   NOT recorded yet at this point (grading happens on 次へ), so leaving
+   here loses nothing: the same card comes up first on resume. */
+function openDictFromSession(entry) {
+  if (!entry) return;
+  flushStudyTime();
+  persistSnapshot();
+  stopTimer();
+  S = null;
+  topicChapter = entry.chapter;
+  view = { tab: "topic", chapter: entry.chapter, topic: entry.topic };
+  render();
+  window.scrollTo(0, 0);
+  toast("ドリルは中断しました。ホームの「続きから再開」から続けられます");
 }
 
 function causePanelHtml(overconfident) {
@@ -2275,6 +2384,7 @@ function renderSession() {
     var pdfNo = function (s) { var m = String(s || "").match(/PDF p\.(\d+)/); return m ? m[1] : null; };
     if (de && de.textPage && pdfNo(de.textPage) !== pdfNo(card.pg)) html += '<p class="small dim" style="margin-top:2px">論点辞書: <span class="b" style="color:var(--ink)">' + esc(de.textPage) + "</span></p>";
     html += figureHtml(fig, "テキストの図で確認");
+    if (de) html += '<button type="button" class="bigbtn ghost" id="btn-dict-open">この論点の辞書を開く</button>';
     html += "</div>";
   }
   html += "</article>";
@@ -2337,6 +2447,7 @@ function renderSession() {
   }
   html += "</div></div>";
   appEl().innerHTML = html;
+  applyViewSlide();
 
   document.getElementById("btn-exit").addEventListener("click", exitSession);
   document.getElementById("btn-pause").addEventListener("click", function () {
@@ -2346,6 +2457,8 @@ function renderSession() {
   });
   var bf = document.getElementById("btn-fig");
   if (bf) bf.addEventListener("click", function () { S.figOpen = !S.figOpen; renderSession(); });
+  var bdo = document.getElementById("btn-dict-open");
+  if (bdo) bdo.addEventListener("click", function () { openDictFromSession(de); });
 
   if (isExam) {
     var eb = document.querySelectorAll("[data-exam]");
@@ -2454,6 +2567,7 @@ function renderDone() {
   }
   html += "</div>" + tabbarHtml("home");
   appEl().innerHTML = html;
+  applyViewSlide();
   bindTabs();
   var bh = document.getElementById("btn-home");
   if (bh) bh.addEventListener("click", function () { S = null; view = { tab: "home" }; render(); });
@@ -2496,6 +2610,7 @@ function renderAuth() {
     '<p class="tiny dim" style="margin:14px 0 0;line-height:1.7">ログイン状態はこの端末のブラウザに保持されるので、タブやブラウザを閉じても、次回はログインしたまま開けます。</p>' +
     "</section></div>";
   appEl().innerHTML = html;
+  applyViewSlide();
   var emailEl = document.getElementById("auth-email"), pwEl = document.getElementById("auth-pw");
   emailEl.value = authDraft.email; pwEl.value = authDraft.pw;
   emailEl.addEventListener("input", function () { authDraft.email = emailEl.value; });
@@ -2589,6 +2704,7 @@ function renderNewPassword() {
     '<button type="submit" class="bigbtn" id="btn-newpw">このパスワードに変更する</button>' +
     "</form></section></div>";
   appEl().innerHTML = html;
+  applyViewSlide();
   var pwEl = document.getElementById("new-pw");
   document.getElementById("btn-pwvis2").addEventListener("click", function () {
     pwVisible = !pwVisible;
@@ -2702,6 +2818,16 @@ function boot() {
    successful read (sbLoaded), so an offline session cannot shadow
    the real progress. */
 window.addEventListener("pagehide", function () { persistLocal(); });
+/* PWA: register the service worker (sw.js sits next to this page, next to
+   manifest.json) so the app shell keeps working offline and the page can
+   be added to the home screen as a standalone app. Registration failure
+   (unsupported browser, sw.js missing) is non-fatal: the page simply
+   keeps running as a normal web page. */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
+  });
+}
 boot();
 </script>
 </body>

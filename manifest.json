@@ -1,0 +1,23 @@
+{
+  "name": "一問一答",
+  "short_name": "一問一答",
+  "start_url": "./yi-wen-yi-da-wai-bu-ban.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eaf3fb",
+  "theme_color": "#eaf3fb",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -7,8 +7,8 @@
 <script>/* Apply a manually fixed display mode (設定の表示モード) before first paint, so a fixed dark/light choice never flashes the system scheme. */
 try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var _m = _dm && _dm.s && _dm.s.displayMode; if (_m === "dark" || _m === "light") document.documentElement.setAttribute("data-theme", _m); } catch (e) {}</script>
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#edf2f8" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#131419" media="(prefers-color-scheme: dark)" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -16,68 +16,86 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
 <link rel="icon" href="data:," />
 <title>一問一答 外部版</title>
 <style>
-  /* ---------- Apple design language (apple.com/jp grammar) ----------
-     Palette: white / #f5f5f7 / black only, with Apple blue (#0066cc
-     links, #0071e3 buttons) as the single restrained accent. No
-     gradients, no glow, no aurora. Sections are told apart by flat
-     surface color (white ↔ #f5f5f7, black ↔ #161617 in dark) and
-     generous whitespace — never by shadows or borders. Type does the
-     work: large, bold headlines and key numbers. View transitions
-     stay the opaque whole-view slide (JS); nothing here animates
-     views in or out, and there is no ambient animation. */
+  /* ---------- Apple skeleton × iCloud softness × Linear precision ----------
+     The layout grammar stays Apple's: huge headlines and key numbers,
+     generous whitespace, flat surface switching. Over that skeleton,
+     iCloud.com's softness: the page sits on a very faint pastel wash
+     (pale sky → lavender → a breath of mint, fixed behind everything),
+     and panels float on it as frosted translucent surfaces with large
+     24–28px radii and soft multi-layer shadows. Linear's precision is
+     in the details: 1px hairline borders, a tuned gray scale for
+     secondary text, layered quiet shadows. Color stays faint and soft
+     — pastel dots/bars tint each chapter, nothing glows, nothing is
+     neon, and there is no ambient animation. View transitions stay
+     the opaque whole-view slide (JS); surfaces never cross-fade. */
   :root{
     color-scheme: light dark;
-    --bg:#ffffff; --surface:#ffffff; --surface-alt:#f5f5f7; --elev:#ffffff;
-    --ink:#1d1d1f; --dim:#6e6e73; --faint:#86868b;
-    --hair:rgba(0,0,0,.1); --border:rgba(0,0,0,.1);
-    --fill:#f5f5f7; --fill2:#e8e8ed;
-    --glass:#ffffff; --glass-strong:#ffffff;
+    --bg:#edf2f8;
+    --wash:linear-gradient(158deg,#e7f0fa 0%,#edecf8 42%,#f3edf7 70%,#e9f4ef 100%);
+    --surface:rgba(255,255,255,.74); --surface-alt:rgba(238,242,250,.68); --elev:rgba(253,253,255,.95);
+    --ink:#1d1d1f; --dim:#61616a; --faint:#9898a1;
+    --hair:rgba(27,32,52,.09); --border:rgba(27,32,52,.09);
+    --fill:rgba(110,122,158,.09); --fill2:rgba(110,122,158,.15);
+    --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.85);
     --accent:#0066cc; --btn:#0071e3;
     --accent2:#d70015; --good:#0a7d2c; --warn:#b25000;
-    --accent-soft:rgba(0,102,204,.08); --accent2-soft:rgba(215,0,21,.06);
+    --accent-soft:rgba(0,102,204,.09); --accent2-soft:rgba(215,0,21,.06);
     --good-soft:rgba(10,125,44,.08); --warn-soft:rgba(178,80,0,.09);
     --fill-bad:#d70015; --fill-good:#0a7d2c; --fill-warn:#b25000;
-    --seg-track:#e9e9ee; --seg-sel:#ffffff;
-    --tabbar:rgba(245,245,247,.86);
-    --chrome:rgba(255,255,255,.88);
-    --shadow-pop:0 8px 30px rgba(0,0,0,.12);
-    --hm1:rgba(0,113,227,.18); --hm2:rgba(0,113,227,.4); --hm3:rgba(0,113,227,.68); --hm4:#0071e3;
+    --seg-track:rgba(110,122,158,.13); --seg-sel:#ffffff; --tabpill:#ffffff;
+    --tabbar:rgba(250,250,253,.7);
+    --chrome:rgba(250,250,253,.8);
+    --shadow-card:0 1px 2px rgba(35,45,80,.05), 0 10px 30px rgba(35,45,80,.07), 0 28px 56px rgba(35,45,80,.05);
+    --shadow-pop:0 2px 6px rgba(35,45,80,.08), 0 16px 40px rgba(35,45,80,.14);
+    --hm1:rgba(109,132,214,.2); --hm2:rgba(109,132,214,.42); --hm3:rgba(109,132,214,.66); --hm4:#6d84d6;
+    --p-blue:#7ea6d8; --p-lav:#a493d8; --p-mint:#7fbfa8; --p-rose:#dfa3b8; --p-sand:#dbba84; --p-sky:#8fc3dd;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#000000; --surface:#000000; --surface-alt:#161617; --elev:#1d1d1f;
-      --ink:#f5f5f7; --dim:#a1a1a6; --faint:#6e6e73;
-      --hair:rgba(255,255,255,.16); --border:rgba(255,255,255,.16);
-      --fill:#1d1d1f; --fill2:#2c2c2e;
-      --glass:#000000; --glass-strong:#1d1d1f;
+      --bg:#131419;
+      --wash:linear-gradient(158deg,#181c26 0%,#15161f 42%,#1a1724 72%,#131a17 100%);
+      --surface:rgba(39,41,51,.62); --surface-alt:rgba(29,30,39,.62); --elev:rgba(35,36,45,.96);
+      --ink:#f2f2f5; --dim:#a9a9b2; --faint:#71717c;
+      --hair:rgba(255,255,255,.09); --border:rgba(255,255,255,.09);
+      --fill:rgba(160,170,200,.09); --fill2:rgba(160,170,200,.15);
+      --glass:rgba(39,41,51,.5); --glass-strong:rgba(46,47,58,.85);
       --accent:#2997ff; --btn:#0071e3;
       --accent2:#ff6961; --good:#30d158; --warn:#ff9f0a;
       --accent-soft:rgba(41,151,255,.14); --accent2-soft:rgba(255,105,97,.12);
       --good-soft:rgba(48,209,88,.12); --warn-soft:rgba(255,159,10,.13);
       --fill-bad:#d70015; --fill-good:#157a35; --fill-warn:#a34a00;
-      --seg-track:#2c2c2e; --seg-sel:#636366;
-      --tabbar:rgba(22,22,23,.86);
-      --chrome:rgba(29,29,31,.88);
-      --shadow-pop:0 8px 30px rgba(0,0,0,.55);
-      --hm1:rgba(41,151,255,.22); --hm2:rgba(41,151,255,.45); --hm3:rgba(41,151,255,.7); --hm4:#2997ff;
+      --seg-track:rgba(160,170,200,.12); --seg-sel:#55565f; --tabpill:#3b3c47;
+      --tabbar:rgba(23,24,30,.72);
+      --chrome:rgba(27,28,35,.82);
+      --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.32), 0 28px 56px rgba(0,0,0,.26);
+      --shadow-pop:0 2px 6px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.5);
+      --hm1:rgba(126,146,224,.22); --hm2:rgba(126,146,224,.45); --hm3:rgba(126,146,224,.68); --hm4:#7e92e0;
+      --p-blue:#8fb0dd; --p-lav:#b3a3e0; --p-mint:#8fcbb2; --p-rose:#e3aec2; --p-sand:#e0c48f; --p-sky:#9cc9e0;
     }
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html{ scroll-behavior:smooth; }
+  html{ scroll-behavior:smooth; background:var(--bg); }
   /* The view slide (below) translates .wrap horizontally; never let that
      widen the page or flash a horizontal scrollbar mid-transition. */
   html, body{ overflow-x:hidden; overflow-x:clip; }
   body{
     margin:0; color:var(--ink); background:var(--bg);
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
-    line-height:1.55; -webkit-font-smoothing:antialiased;
+    line-height:1.55; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+  }
+  /* The pastel wash is a single fixed layer behind everything: static,
+     never animated, and the sliding views move over it as solid
+     (opacity 1) blocks, exactly as before. */
+  body::before{
+    content:""; position:fixed; inset:0; z-index:-1; background:var(--wash);
   }
   button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer; }
   button:focus-visible, a:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .wrap{ max-width:680px; margin:0 auto; padding:0 18px calc(118px + env(safe-area-inset-bottom)); }
-  /* Flat surface: no border, no shadow, no blur. Section rhythm comes
-     from the alternating surface color below. */
-  .glass{ background:var(--surface); border:0; border-radius:24px; box-shadow:none; }
+  /* Frosted panel: translucent surface over the pastel wash, one
+     hairline border, and a soft layered shadow so the panel floats.
+     Section rhythm still comes from the alternating surface tint. */
+  .glass{ background:var(--surface); border:1px solid var(--hair); border-radius:26px; box-shadow:var(--shadow-card); }
   section.card:nth-of-type(even){ background:var(--surface-alt); }
   .serif{ font-family:inherit; }
   .dim{ color:var(--dim); } .small{ font-size:12px; } .tiny{ font-size:11px; }
@@ -85,7 +103,7 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
 
   /* ---------- top status ---------- */
   .topbar{ display:flex; align-items:center; gap:8px; padding:22px 2px 6px; flex-wrap:wrap; }
-  .pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; background:var(--fill); color:var(--dim); }
+  .pill{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; background:var(--surface); border:1px solid var(--hair); box-shadow:0 1px 3px rgba(35,45,80,.05); color:var(--dim); }
   .pill .dot{ width:8px; height:8px; border-radius:50%; background:var(--faint); flex:none; }
   .pill.on .dot{ background:var(--good); }
   .pill.busy .dot{ background:var(--warn); }
@@ -108,20 +126,21 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .bigbtn{
     display:block; width:100%; margin-top:20px; padding:15px 22px; border-radius:980px;
     background:var(--btn); color:#fff; font-size:16px; font-weight:600; text-align:center;
+    box-shadow:0 2px 6px rgba(0,113,227,.16), 0 10px 22px rgba(0,113,227,.14);
   }
-  .bigbtn:disabled{ opacity:.4; }
-  .bigbtn.ghost{ background:transparent; color:var(--accent); font-weight:600; }
+  .bigbtn:disabled{ opacity:.4; box-shadow:none; }
+  .bigbtn.ghost{ background:transparent; color:var(--accent); font-weight:600; box-shadow:none; }
 
   .seg{ display:flex; background:var(--seg-track); border-radius:12px; padding:2px; gap:2px; }
   .seg button{ flex:1; padding:8px 4px; border-radius:10px; font-size:13.5px; font-weight:600; color:var(--dim); white-space:nowrap; }
-  .seg button.sel{ background:var(--seg-sel); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .seg button.sel{ background:var(--seg-sel); color:var(--ink); box-shadow:0 1px 2px rgba(35,45,80,.09), 0 4px 12px rgba(35,45,80,.08); }
   .seg.wrap{ flex-wrap:wrap; } .seg.wrap button{ flex:1 1 30%; }
   .seg.ranks{ display:grid; grid-template-columns:repeat(6, 1fr); }
   .seg.ranks button{ grid-column:span 2; }
   .seg.ranks button:nth-child(4), .seg.ranks button:nth-child(5){ grid-column:span 3; }
 
   .modegrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
-  .modebtn{ border-radius:18px; background:var(--fill); padding:16px 12px; font-size:14.5px; font-weight:600; text-align:center; }
+  .modebtn{ border-radius:20px; background:var(--fill); padding:16px 12px; font-size:14.5px; font-weight:600; text-align:center; }
   section.card:nth-of-type(even) .modebtn{ background:var(--fill2); }
   .modebtn small{ display:block; margin-top:3px; font-size:11px; font-weight:500; color:var(--dim); }
   .modebtn:disabled{ opacity:.4; }
@@ -130,6 +149,15 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .modebtn.focus{ display:block; width:100%; margin-top:10px; background:var(--fill); color:var(--ink); }
   section.card:nth-of-type(even) .modebtn.focus{ background:var(--fill2); }
   .modebtn.focus small{ color:var(--dim); }
+  /* Faint pastel tints per function (iCloud app colors, kept whisper-
+     quiet): review = mint, weak = sand, focus = lavender, random = sky.
+     本番形式 keeps its rose-soft exam tint above. */
+  #btn-review{ background:rgba(110,180,150,.13); }
+  #btn-weak{ background:rgba(216,178,116,.15); }
+  #btn-focus{ background:rgba(164,147,216,.13); }
+  section.card:nth-of-type(even) #btn-focus{ background:rgba(164,147,216,.13); }
+  #btn-random{ background:rgba(127,178,214,.13); }
+  section.card:nth-of-type(even) #btn-random{ background:rgba(127,178,214,.13); }
 
   .bar{ height:6px; border-radius:99px; background:var(--fill2); overflow:hidden; }
   .bar > i{ display:block; height:100%; border-radius:99px; background:var(--btn); }
@@ -147,10 +175,36 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .tag.good{ background:var(--good-soft); color:var(--good); }
   .tag.warn{ background:var(--warn-soft); color:var(--warn); }
 
+  /* ---------- per-chapter pastel accents ----------
+     Home's chapter rows already carry data-chapter, so each chapter
+     gets its own faint pastel purely in CSS: a small dot before the
+     title and the mastery bar in the same tint. Nothing else about
+     the row changes. */
+  .rowline[data-chapter="第1章"]{ --chp:var(--p-blue); }
+  .rowline[data-chapter="第2章"]{ --chp:var(--p-lav); }
+  .rowline[data-chapter="第3章"]{ --chp:var(--p-mint); }
+  .rowline[data-chapter="第4章"]{ --chp:var(--p-rose); }
+  .rowline[data-chapter="第5章"]{ --chp:var(--p-sand); }
+  .rowline[data-chapter="第6章"]{ --chp:var(--p-sky); }
+  .rowline[data-chapter="第7章"]{ --chp:var(--p-blue); }
+  .rowline[data-chapter="第8章"]{ --chp:var(--p-lav); }
+  .rowline[data-chapter="第9章"]{ --chp:var(--p-mint); }
+  .rowline[data-chapter="第10章"]{ --chp:var(--p-rose); }
+  .rowline[data-chapter="第11章"]{ --chp:var(--p-sand); }
+  .rowline[data-chapter="第21章"]{ --chp:var(--p-sky); }
+  .rowline[data-chapter="計算第6回"]{ --chp:var(--p-mint); }
+  .rowline[data-chapter="計算第8回"]{ --chp:var(--p-blue); }
+  .rowline[data-chapter] .ttl::before{
+    content:""; display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--chp, var(--faint)); margin-right:9px; vertical-align:2px;
+  }
+  .rowline[data-chapter] .bar > i.good{ background:var(--chp, var(--good)); }
+
   .resume-row{ display:flex; gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid var(--hair); }
   .resume-row:last-child{ border-bottom:0; }
   .resume-row .grow{ flex:1; min-width:0; }
-  .minibtn{ flex:none; border-radius:980px; background:var(--btn); color:#fff; font-size:13px; font-weight:600; padding:8px 16px; }
+  .minibtn{ flex:none; border-radius:980px; background:var(--btn); color:#fff; font-size:13px; font-weight:600; padding:8px 16px; box-shadow:0 2px 8px rgba(0,113,227,.16); }
+  .minibtn.grey{ box-shadow:none; }
   .minibtn.grey{ background:var(--fill2); color:var(--ink); }
 
   .abstrip{ display:flex; align-items:center; gap:12px; }
@@ -180,7 +234,7 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .confrow .cl{ font-size:12px; font-weight:700; color:var(--dim); flex:none; }
   .confseg{ display:flex; flex:1; background:var(--seg-track); border-radius:11px; padding:2px; gap:2px; }
   .confseg button{ flex:1; border-radius:9px; padding:9px 4px; font-size:13px; font-weight:600; color:var(--dim); }
-  .confseg button.sel{ background:var(--seg-sel); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.12); }
+  .confseg button.sel{ background:var(--seg-sel); color:var(--ink); box-shadow:0 1px 2px rgba(35,45,80,.09), 0 4px 12px rgba(35,45,80,.08); }
   .srctags{ display:flex; flex-wrap:wrap; gap:5px; margin-top:14px; align-items:center; }
   .srctags .chip{ margin:0; }
   .figwrap{ margin-top:14px; }
@@ -199,28 +253,28 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .figv-hint{ color:rgba(232,236,244,.75); font-size:11.5px; text-align:center; padding:8px 16px calc(12px + env(safe-area-inset-bottom)); }
 
   .oxgrid{ display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:16px; }
-  .oxbtn{ border-radius:20px; padding:17px 8px; font-size:20px; font-weight:700; line-height:1.25; }
+  .oxbtn{ border-radius:22px; padding:17px 8px; font-size:20px; font-weight:700; line-height:1.25; }
   .oxbtn small{ display:block; font-size:11.5px; font-weight:500; margin-top:3px; opacity:.85; }
   .oxbtn.sure-o{ background:var(--btn); color:#fff; } .oxbtn.guess-o{ background:var(--accent-soft); color:var(--accent); }
   .oxbtn.sure-x{ background:var(--fill-bad); color:#fff; } .oxbtn.guess-x{ background:var(--accent2-soft); color:var(--accent2); }
   .choices{ margin-top:16px; display:grid; gap:10px; }
-  .choice{ display:flex; gap:11px; align-items:flex-start; text-align:left; width:100%; padding:15px; border-radius:18px; background:var(--surface); border:1px solid var(--hair); font-size:14.5px; line-height:1.65; }
+  .choice{ display:flex; gap:11px; align-items:flex-start; text-align:left; width:100%; padding:15px; border-radius:20px; background:var(--elev); border:1px solid var(--hair); font-size:14.5px; line-height:1.65; box-shadow:0 1px 3px rgba(35,45,80,.04); }
   .choice .lab{ flex:none; border-radius:8px; background:var(--accent-soft); color:var(--accent); font-size:12px; font-weight:700; padding:3px 8px; margin-top:1px; }
   .choice.right{ border-color:var(--good); background:var(--good-soft); }
   .choice.wrong{ border-color:var(--accent2); background:var(--accent2-soft); }
   .choice.faded{ opacity:.45; }
   .grade3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:16px; }
-  .grade3 button{ border-radius:16px; padding:14px 4px; font-size:14.5px; font-weight:700; color:#fff; }
+  .grade3 button{ border-radius:18px; padding:14px 4px; font-size:14.5px; font-weight:700; color:#fff; }
   .g-known{ background:var(--fill-good); } .g-shaky{ background:var(--fill-warn); } .g-missed{ background:var(--fill-bad); }
   .grade2{ display:grid; grid-template-columns:1fr 1.4fr; gap:10px; margin-top:16px; }
-  .grade2 button{ border-radius:16px; padding:14px 6px; font-size:14px; font-weight:600; }
+  .grade2 button{ border-radius:18px; padding:14px 6px; font-size:14px; font-weight:600; }
   .nextbtn{ background:var(--btn); color:#fff; font-weight:700 !important; }
-  .causepanel{ margin-top:16px; padding:18px; border-radius:18px; background:var(--fill); }
+  .causepanel{ margin-top:16px; padding:18px; border-radius:20px; background:var(--fill); }
   .causepanel h3{ margin:0 0 4px; font-size:15px; }
   .causegrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-top:12px; }
-  .causegrid button{ border-radius:13px; background:var(--surface); border:1px solid var(--hair); padding:12px 4px; font-size:13.5px; font-weight:600; }
+  .causegrid button{ border-radius:13px; background:var(--elev); border:1px solid var(--hair); padding:12px 4px; font-size:13.5px; font-weight:600; }
   .skipcause{ display:block; margin:12px auto 0; font-size:12.5px; color:var(--accent); }
-  .notice{ margin-top:12px; border-radius:14px; padding:12px 14px; font-size:12.5px; font-weight:500; line-height:1.65; }
+  .notice{ margin-top:12px; border-radius:16px; padding:12px 14px; font-size:12.5px; font-weight:500; line-height:1.65; }
   .notice.warnbox{ background:var(--warn-soft); }
   .notice.badbox{ background:var(--accent2-soft); color:var(--accent2); }
   .notice.okbox{ background:var(--good-soft); color:var(--good); }
@@ -232,12 +286,12 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   /* ---------- topic / dict ---------- */
   .dictsum{ font-size:14px; line-height:1.85; margin-top:10px; white-space:pre-wrap; }
   .kw{ display:inline-block; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-size:12px; font-weight:600; padding:3px 10px; margin:0 5px 5px 0; }
-  .searchbox{ width:100%; padding:13px 16px; border-radius:980px; border:1px solid var(--hair); background:var(--surface); font-size:16px; color:var(--ink); }
-  section.card:nth-of-type(even) .searchbox{ background:var(--surface); }
+  .searchbox{ width:100%; padding:13px 16px; border-radius:980px; border:1px solid var(--hair); background:var(--elev); font-size:16px; color:var(--ink); }
+  section.card:nth-of-type(even) .searchbox{ background:var(--elev); }
   .field{ margin-top:16px; }
   .field label{ display:block; font-size:12.5px; font-weight:600; color:var(--dim); margin-bottom:6px; }
-  .field input{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hair); background:var(--surface); font-size:16px; color:var(--ink); }
-  .field select{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--hair); background:var(--surface); font-size:16px; color:var(--ink); }
+  .field input{ width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--hair); background:var(--elev); font-size:16px; color:var(--ink); }
+  .field select{ width:100%; padding:12px 14px; border-radius:14px; border:1px solid var(--hair); background:var(--elev); font-size:16px; color:var(--ink); }
 
   .weekbars{ display:flex; gap:6px; align-items:flex-end; height:86px; margin-top:14px; }
   .weekbars .col{ flex:1; display:flex; flex-direction:column; align-items:center; gap:5px; height:100%; justify-content:flex-end; }
@@ -245,20 +299,20 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .weekbars .col span{ font-size:10px; color:var(--dim); }
   .weekbars .col em{ font-size:10px; font-style:normal; font-weight:700; }
 
-  /* ---------- tab bar (apple.com-style frosted chrome) ---------- */
+  /* ---------- tab bar (frosted chrome over the wash) ---------- */
   .tabbar{
     position:fixed; left:50%; transform:translateX(-50%); bottom:calc(10px + env(safe-area-inset-bottom));
-    width:min(648px, calc(100% - 24px)); display:flex; gap:2px; padding:6px; border-radius:24px; z-index:50;
-    background:var(--tabbar); border:1px solid var(--hair);
-    backdrop-filter:blur(20px) saturate(1.8); -webkit-backdrop-filter:blur(20px) saturate(1.8);
+    width:min(648px, calc(100% - 24px)); display:flex; gap:2px; padding:6px; border-radius:26px; z-index:50;
+    background:var(--tabbar); border:1px solid var(--hair); box-shadow:var(--shadow-pop);
+    backdrop-filter:blur(22px) saturate(1.7); -webkit-backdrop-filter:blur(22px) saturate(1.7);
   }
-  .tabbar button{ position:relative; z-index:1; flex:1; border-radius:18px; padding:9px 2px 7px; font-size:11px; font-weight:600; color:var(--dim); display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .tabbar button{ position:relative; z-index:1; flex:1; border-radius:20px; padding:9px 2px 7px; font-size:11px; font-weight:600; color:var(--dim); display:flex; flex-direction:column; align-items:center; gap:2px; }
   .tabbar button svg{ width:21px; height:21px; }
   .tabbar button.sel{ background:transparent; color:var(--accent); }
   /* sliding pill behind the selected tab (moved by JS) */
   .tabpill{
-    position:absolute; z-index:0; border-radius:18px; pointer-events:none; opacity:0;
-    background:var(--fill2);
+    position:absolute; z-index:0; border-radius:20px; pointer-events:none; opacity:0;
+    background:var(--tabpill); box-shadow:0 1px 3px rgba(35,45,80,.1), 0 6px 16px rgba(35,45,80,.08);
     transition:left .38s cubic-bezier(.32,.9,.3,1), width .38s cubic-bezier(.32,.9,.3,1), opacity .2s ease;
   }
 
@@ -312,44 +366,52 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
      data-theme on <html> beats the system media query: these rules come
      after the media block and carry an extra attribute selector. */
   :root[data-theme="light"]{
-    --bg:#ffffff; --surface:#ffffff; --surface-alt:#f5f5f7; --elev:#ffffff;
-    --ink:#1d1d1f; --dim:#6e6e73; --faint:#86868b;
-    --hair:rgba(0,0,0,.1); --border:rgba(0,0,0,.1);
-    --fill:#f5f5f7; --fill2:#e8e8ed;
-    --glass:#ffffff; --glass-strong:#ffffff;
+    --bg:#edf2f8;
+    --wash:linear-gradient(158deg,#e7f0fa 0%,#edecf8 42%,#f3edf7 70%,#e9f4ef 100%);
+    --surface:rgba(255,255,255,.74); --surface-alt:rgba(238,242,250,.68); --elev:rgba(253,253,255,.95);
+    --ink:#1d1d1f; --dim:#61616a; --faint:#9898a1;
+    --hair:rgba(27,32,52,.09); --border:rgba(27,32,52,.09);
+    --fill:rgba(110,122,158,.09); --fill2:rgba(110,122,158,.15);
+    --glass:rgba(255,255,255,.55); --glass-strong:rgba(255,255,255,.85);
     --accent:#0066cc; --btn:#0071e3;
     --accent2:#d70015; --good:#0a7d2c; --warn:#b25000;
-    --accent-soft:rgba(0,102,204,.08); --accent2-soft:rgba(215,0,21,.06);
+    --accent-soft:rgba(0,102,204,.09); --accent2-soft:rgba(215,0,21,.06);
     --good-soft:rgba(10,125,44,.08); --warn-soft:rgba(178,80,0,.09);
     --fill-bad:#d70015; --fill-good:#0a7d2c; --fill-warn:#b25000;
-    --seg-track:#e9e9ee; --seg-sel:#ffffff;
-    --tabbar:rgba(245,245,247,.86);
-    --chrome:rgba(255,255,255,.88);
-    --shadow-pop:0 8px 30px rgba(0,0,0,.12);
-    --hm1:rgba(0,113,227,.18); --hm2:rgba(0,113,227,.4); --hm3:rgba(0,113,227,.68); --hm4:#0071e3;
+    --seg-track:rgba(110,122,158,.13); --seg-sel:#ffffff; --tabpill:#ffffff;
+    --tabbar:rgba(250,250,253,.7);
+    --chrome:rgba(250,250,253,.8);
+    --shadow-card:0 1px 2px rgba(35,45,80,.05), 0 10px 30px rgba(35,45,80,.07), 0 28px 56px rgba(35,45,80,.05);
+    --shadow-pop:0 2px 6px rgba(35,45,80,.08), 0 16px 40px rgba(35,45,80,.14);
+    --hm1:rgba(109,132,214,.2); --hm2:rgba(109,132,214,.42); --hm3:rgba(109,132,214,.66); --hm4:#6d84d6;
+    --p-blue:#7ea6d8; --p-lav:#a493d8; --p-mint:#7fbfa8; --p-rose:#dfa3b8; --p-sand:#dbba84; --p-sky:#8fc3dd;
   }
   :root[data-theme="dark"]{
-    --bg:#000000; --surface:#000000; --surface-alt:#161617; --elev:#1d1d1f;
-    --ink:#f5f5f7; --dim:#a1a1a6; --faint:#6e6e73;
-    --hair:rgba(255,255,255,.16); --border:rgba(255,255,255,.16);
-    --fill:#1d1d1f; --fill2:#2c2c2e;
-    --glass:#000000; --glass-strong:#1d1d1f;
+    --bg:#131419;
+    --wash:linear-gradient(158deg,#181c26 0%,#15161f 42%,#1a1724 72%,#131a17 100%);
+    --surface:rgba(39,41,51,.62); --surface-alt:rgba(29,30,39,.62); --elev:rgba(35,36,45,.96);
+    --ink:#f2f2f5; --dim:#a9a9b2; --faint:#71717c;
+    --hair:rgba(255,255,255,.09); --border:rgba(255,255,255,.09);
+    --fill:rgba(160,170,200,.09); --fill2:rgba(160,170,200,.15);
+    --glass:rgba(39,41,51,.5); --glass-strong:rgba(46,47,58,.85);
     --accent:#2997ff; --btn:#0071e3;
     --accent2:#ff6961; --good:#30d158; --warn:#ff9f0a;
     --accent-soft:rgba(41,151,255,.14); --accent2-soft:rgba(255,105,97,.12);
     --good-soft:rgba(48,209,88,.12); --warn-soft:rgba(255,159,10,.13);
     --fill-bad:#d70015; --fill-good:#157a35; --fill-warn:#a34a00;
-    --seg-track:#2c2c2e; --seg-sel:#636366;
-    --tabbar:rgba(22,22,23,.86);
-    --chrome:rgba(29,29,31,.88);
-    --shadow-pop:0 8px 30px rgba(0,0,0,.55);
-    --hm1:rgba(41,151,255,.22); --hm2:rgba(41,151,255,.45); --hm3:rgba(41,151,255,.7); --hm4:#2997ff;
+    --seg-track:rgba(160,170,200,.12); --seg-sel:#55565f; --tabpill:#3b3c47;
+    --tabbar:rgba(23,24,30,.72);
+    --chrome:rgba(27,28,35,.82);
+    --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.32), 0 28px 56px rgba(0,0,0,.26);
+    --shadow-pop:0 2px 6px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.5);
+    --hm1:rgba(126,146,224,.22); --hm2:rgba(126,146,224,.45); --hm3:rgba(126,146,224,.68); --hm4:#7e92e0;
+    --p-blue:#8fb0dd; --p-lav:#b3a3e0; --p-mint:#8fcbb2; --p-rose:#e3aec2; --p-sand:#e0c48f; --p-sky:#9cc9e0;
   }
 
   /* ---------- additions: stale banner / topic map / memo / report ---------- */
   .stalebanner{
     display:flex; align-items:center; gap:8px; width:100%; text-align:left;
-    margin-top:12px; padding:11px 15px; border-radius:14px;
+    margin-top:12px; padding:11px 15px; border-radius:16px; border:1px solid var(--hair);
     background:var(--warn-soft);
     color:var(--ink); font-size:13px; font-weight:600; line-height:1.4;
   }
@@ -358,17 +420,17 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .maplegend{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:11px; color:var(--dim); }
   .maplegend span{ display:inline-flex; align-items:center; gap:5px; }
   .maplegend .statusdot{ margin-right:0; }
-  .memoinput{ width:100%; padding:11px 13px; border-radius:12px; border:1px solid var(--hair); background:var(--surface); font-size:14.5px; color:var(--ink); }
+  .memoinput{ width:100%; padding:11px 13px; border-radius:14px; border:1px solid var(--hair); background:var(--elev); font-size:14.5px; color:var(--ink); }
   .smallbtn{ border-radius:980px; background:var(--fill2); color:var(--ink); font-size:12px; font-weight:600; padding:8px 14px; }
   .smallbtn.accent{ background:var(--accent-soft); color:var(--accent); }
   /* After an answer is revealed, the grading / next controls ride in a
      sticky thumb bar at the bottom of the screen (feature 29). */
   .floatbar{ position:sticky; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:6; margin-top:16px;
-    background:var(--chrome); border:1px solid var(--hair); border-radius:20px; padding:10px;
-    box-shadow:var(--shadow-pop); backdrop-filter:blur(20px) saturate(1.8); -webkit-backdrop-filter:blur(20px) saturate(1.8); }
+    background:var(--chrome); border:1px solid var(--hair); border-radius:24px; padding:10px;
+    box-shadow:var(--shadow-pop); backdrop-filter:blur(22px) saturate(1.7); -webkit-backdrop-filter:blur(22px) saturate(1.7); }
   .floatbar .nextbtn{ padding:17px 6px; font-size:15.5px; border-radius:980px; }
   .floatbar .grade3, .floatbar .grade2, .floatbar .causepanel{ margin-top:0; }
-  .suggestbox{ margin-top:8px; border-radius:14px; overflow:hidden; border:1px solid var(--hair); background:var(--surface); }
+  .suggestbox{ margin-top:8px; border-radius:16px; overflow:hidden; border:1px solid var(--hair); background:var(--elev); box-shadow:var(--shadow-pop); }
   .suggestbox:empty{ display:none; }
   .badgecell{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:600; background:var(--fill2); color:var(--faint); }
   .badgecell.earned{ background:var(--warn-soft); color:var(--warn); }
@@ -387,8 +449,8 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .dictsheet-panel{
     position:absolute; left:50%; bottom:0; width:min(680px, 100%);
     max-height:88dvh; display:flex; flex-direction:column;
-    background:var(--elev); border:0; border-bottom:0;
-    border-radius:28px 28px 0 0; box-shadow:0 -12px 40px rgba(0,0,0,.22);
+    background:var(--elev); border:1px solid var(--hair); border-bottom:0;
+    border-radius:28px 28px 0 0; box-shadow:0 -4px 16px rgba(35,45,80,.08), 0 -18px 48px rgba(35,45,80,.16);
     transform:translate(-50%, 103%); transition:transform .38s cubic-bezier(.22,1,.36,1);
   }
   .dictsheet-root.open .dictsheet-panel{ transform:translate(-50%, 0); }
@@ -2450,12 +2512,27 @@ function saveWeeklyImage(ws) {
   var ctx = cv.getContext("2d");
   var dark = document.documentElement.getAttribute("data-theme") === "dark" ||
     (!document.documentElement.getAttribute("data-theme") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  ctx.fillStyle = dark ? "#000000" : "#ffffff"; ctx.fillRect(0, 0, 1080, 1080);
-  ctx.fillStyle = "#0071e3"; ctx.fillRect(0, 0, 1080, 14);
-  ctx.fillStyle = dark ? "#f5f5f7" : "#1d1d1f";
-  ctx.font = "700 44px sans-serif"; ctx.fillText("今週の学習サマリー", 72, 130);
-  ctx.font = "400 30px sans-serif"; ctx.fillStyle = dark ? "#a1a1a6" : "#6e6e73";
-  ctx.fillText(fmtDayShort(ws.mon) + "（月）〜 " + fmtDayShort(ws.sun) + "（日）", 72, 185);
+  /* Same world as the app: a faint pastel wash (sky → lavender) with
+     one frosted panel floating on it; deep gray with a whisper of
+     color in dark mode. Quiet only — no glow, no neon. */
+  var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
+  if (dark) { bgGrad.addColorStop(0, "#181c26"); bgGrad.addColorStop(.5, "#14151d"); bgGrad.addColorStop(1, "#171420"); }
+  else { bgGrad.addColorStop(0, "#e7f0fa"); bgGrad.addColorStop(.45, "#edecf8"); bgGrad.addColorStop(.75, "#f3edf7"); bgGrad.addColorStop(1, "#e9f4ef"); }
+  ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, 1080, 1080);
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(44, 44, 992, 992, 44); else ctx.rect(44, 44, 992, 992);
+  ctx.fillStyle = dark ? "rgba(255,255,255,.05)" : "rgba(255,255,255,.66)"; ctx.fill();
+  ctx.strokeStyle = dark ? "rgba(255,255,255,.1)" : "rgba(27,32,52,.08)"; ctx.lineWidth = 2; ctx.stroke();
+  var acGrad = ctx.createLinearGradient(72, 0, 216, 0);
+  acGrad.addColorStop(0, dark ? "#8fb0dd" : "#7ea6d8"); acGrad.addColorStop(1, dark ? "#b3a3e0" : "#a493d8");
+  ctx.fillStyle = acGrad;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(72, 88, 144, 12, 6); else ctx.rect(72, 88, 144, 12);
+  ctx.fill();
+  ctx.fillStyle = dark ? "#f2f2f5" : "#1d1d1f";
+  ctx.font = "700 44px sans-serif"; ctx.fillText("今週の学習サマリー", 72, 182);
+  ctx.font = "400 30px sans-serif"; ctx.fillStyle = dark ? "#a9a9b2" : "#61616a";
+  ctx.fillText(fmtDayShort(ws.mon) + "（月）〜 " + fmtDayShort(ws.sun) + "（日）", 72, 236);
   var rows = [
     ["学習時間", fmtDur(ws.sec)],
     ["解いた問題", ws.answered + "問"],
@@ -2463,18 +2540,18 @@ function saveWeeklyImage(ws) {
     ["定着したカード", ws.mastered + "問"],
     ["学習日数", ws.days + "日"]
   ];
-  var valGrad = dark ? "#f5f5f7" : "#1d1d1f";
+  var valGrad = dark ? "#f2f2f5" : "#1d1d1f";
   rows.forEach(function (r, i) {
-    var y = 320 + i * 138;
-    ctx.font = "400 32px sans-serif"; ctx.fillStyle = dark ? "#a1a1a6" : "#6e6e73";
+    var y = 340 + i * 132;
+    ctx.font = "400 32px sans-serif"; ctx.fillStyle = dark ? "#a9a9b2" : "#61616a";
     ctx.fillText(r[0], 72, y);
     ctx.font = "800 64px sans-serif"; ctx.fillStyle = valGrad;
     ctx.fillText(r[1], 72, y + 72);
-    ctx.strokeStyle = dark ? "rgba(255,255,255,.16)" : "rgba(0,0,0,.1)";
-    ctx.beginPath(); ctx.moveTo(72, y + 100); ctx.lineTo(1008, y + 100); ctx.stroke();
+    ctx.strokeStyle = dark ? "rgba(255,255,255,.1)" : "rgba(27,32,52,.09)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(72, y + 98); ctx.lineTo(1008, y + 98); ctx.stroke();
   });
-  ctx.font = "400 26px sans-serif"; ctx.fillStyle = dark ? "#6e6e73" : "#86868b";
-  ctx.fillText("一問一答ドリル", 72, 1020);
+  ctx.font = "400 26px sans-serif"; ctx.fillStyle = dark ? "#7a7a85" : "#8a8a93";
+  ctx.fillText("一問一答ドリル", 72, 1006);
   var finish = function (blob) {
     if (!blob) { toast("画像を作れませんでした"); return; }
     var file = null;

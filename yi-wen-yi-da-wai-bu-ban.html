@@ -4,6 +4,8 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
+<script>/* Apply a manually fixed display mode (設定の表示モード) before first paint, so a fixed dark/light choice never flashes the system scheme. */
+try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var _m = _dm && _dm.s && _dm.s.displayMode; if (_m === "dark" || _m === "light") document.documentElement.setAttribute("data-theme", _m); } catch (e) {}</script>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#eef0f4" media="(prefers-color-scheme: light)" />
 <meta name="theme-color" content="#08080d" media="(prefers-color-scheme: dark)" />
@@ -285,6 +287,59 @@
   .pickchip.sel{ background:rgba(10,108,255,.12); color:var(--accent); border-color:var(--accent); }
   .pickchip .cnt{ font-size:11px; font-weight:600; opacity:.75; }
 
+  /* ---------- manual display mode (自動/ライト固定/ダーク固定) ----------
+     data-theme on <html> beats the system media query: these rules come
+     after the media block and carry an extra attribute selector. */
+  :root[data-theme="light"]{
+    --bg:#eef0f4; --ink:#1c1c1e; --dim:#6e6e73; --faint:#9a9aa0;
+    --glass:rgba(255,255,255,.68); --glass-strong:rgba(255,255,255,.86);
+    --fill:rgba(120,120,128,.10); --fill2:rgba(120,120,128,.16);
+    --border:rgba(60,60,67,.13);
+    --accent:#0a6cff; --accent2:#ff453a; --good:#1fae4e; --warn:#e8890c;
+    --shadow:0 10px 34px rgba(28,32,54,.10), 0 1.5px 5px rgba(28,32,54,.06);
+    --tabbar:rgba(250,250,252,.78);
+    --hm1:rgba(10,108,255,.26); --hm2:rgba(10,108,255,.48); --hm3:rgba(10,108,255,.72); --hm4:#0a6cff;
+  }
+  :root[data-theme="dark"]{
+    --bg:#08080d; --ink:#f5f5f7; --dim:#a1a1a6; --faint:#6e6e73;
+    --glass:rgba(30,30,38,.62); --glass-strong:rgba(34,34,42,.88);
+    --fill:rgba(120,120,128,.18); --fill2:rgba(120,120,128,.28);
+    --border:rgba(235,235,245,.13);
+    --accent:#409cff; --accent2:#ff6961; --good:#30d158; --warn:#ffb340;
+    --shadow:0 10px 34px rgba(0,0,0,.45), 0 1.5px 5px rgba(0,0,0,.3);
+    --tabbar:rgba(16,16,22,.78);
+    --hm1:rgba(64,156,255,.30); --hm2:rgba(64,156,255,.52); --hm3:rgba(64,156,255,.76); --hm4:#409cff;
+  }
+
+  /* ---------- additions: stale banner / topic map / memo / report ---------- */
+  .stalebanner{
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+    margin-top:10px; padding:9px 14px; border-radius:12px;
+    background:rgba(232,137,12,.13); border:1px solid rgba(232,137,12,.35);
+    color:var(--ink); font-size:13px; font-weight:700; line-height:1.4;
+  }
+  .stalebanner .chev{ margin-left:auto; }
+  .statusdot{ flex:none; width:10px; height:10px; border-radius:50%; margin-right:2px; }
+  .maplegend{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:11px; color:var(--dim); }
+  .maplegend span{ display:inline-flex; align-items:center; gap:5px; }
+  .maplegend .statusdot{ margin-right:0; }
+  .memoinput{ width:100%; padding:10px 12px; border-radius:11px; border:1px solid var(--border); background:var(--glass-strong); font-size:14.5px; color:var(--ink); }
+  .smallbtn{ border-radius:999px; background:var(--fill); color:var(--dim); font-size:12px; font-weight:700; padding:7px 13px; }
+  .smallbtn.accent{ background:rgba(10,108,255,.12); color:var(--accent); }
+  .field select{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--border); background:var(--glass-strong); font-size:16px; color:var(--ink); }
+  /* After an answer is revealed, the grading / next controls ride in a
+     sticky thumb bar at the bottom of the screen (feature 29). */
+  .floatbar{ position:sticky; bottom:calc(8px + env(safe-area-inset-bottom)); z-index:6; margin-top:14px;
+    background:var(--glass-strong); border:1px solid var(--border); border-radius:18px; padding:10px;
+    box-shadow:var(--shadow); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  .floatbar .nextbtn{ padding:17px 6px; font-size:15.5px; border-radius:15px; }
+  .floatbar .grade3, .floatbar .grade2, .floatbar .causepanel{ margin-top:0; }
+  .expl strong{ font-weight:800; }
+  .suggestbox{ margin-top:8px; border-radius:14px; overflow:hidden; }
+  .suggestbox:empty{ display:none; }
+  .badgecell{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; background:var(--fill); color:var(--faint); border:1px solid var(--border); }
+  .badgecell.earned{ background:rgba(232,169,12,.16); color:var(--warn); border-color:rgba(232,169,12,.45); }
+
   @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .tabpill{ transition:none; } }
 </style>
 </head>
@@ -335,7 +390,72 @@ var CAUSES = [ { k: "unknown", label: "知識なし" }, { k: "confused", label: 
 
 /* ---------------- data ---------------- */
 var DATA = window.QA_DATA || null;
-var CARDS = DATA ? DATA.cards : [];
+/* 手順 (proc) cards added for the 計算 deck (feature 32): each flow is
+   taken from the matching 論点辞書 summary / existing card explanations
+   for 計算第6回・第8回 only, where the correct order is unambiguous.
+   Correct answers are spread across ア/イ/ウ. Choice lengths are
+   balanced per card (distractors carry neutral elaboration) so the
+   correct choice is never the uniquely longest one — machine-measured
+   on 2026-11-06: uniquely-longest correct = 0/8. */
+var EXTRA_CARDS = [
+  { id: 1013, d: "keisan", ch: "計算第6回", tp: "債権の3区分と貸倒見積高", f: "proc", rk: "A", so: 9101, tg: "計算第6回 講義・テキスト②", pg: "計算テキスト②",
+    q: "貸倒見積高を算定する手順として、正しいものはどれか。",
+    cs: ["債権を一般債権・貸倒懸念債権・破産更生債権等に区分する → 区分ごとに見積方法（実績率法／財務内容評価法／担保等控除後の全額）を適用する → 合計額が貸倒見積高になる",
+         "債権全体に貸倒実績率を一律に適用する → 担保の処分見込額を全額加算する → 債務者の財務内容の評価は行わず、その合計額をそのまま貸倒見積高として引当金を設定する（毎期同じ率を用いる）",
+         "担保の処分見込額を先に差し引いてから債権を区分する → 全区分に財務内容評価法を一律に適用する → 見積方法の使い分けは行わず、合計額が貸倒見積高になる"],
+    a: "ア",
+    ex: "まず債権を3区分に分け、区分ごとに見積方法を使い分ける。一般債権は貸倒実績率法、貸倒懸念債権は財務内容評価法（債権額から担保の処分見込額等を控除した額に回収不能見込率を乗じる）、破産更生債権等は担保等を控除した後の全額を見積もる。" },
+  { id: 1014, d: "keisan", ch: "計算第6回", tp: "貸倒引当金の基礎", f: "proc", rk: "A", so: 9102, tg: "計算第6回 講義・テキスト②", pg: "計算テキスト②",
+    q: "差額補充法で貸倒引当金を設定する手順として、正しいものはどれか。",
+    cs: ["既設定残高を先に取り崩してゼロにする → 必要額の全額を新たに繰り入れる → 期末残高が必要額と一致する（洗替法の考え方で毎期この手順を繰り返す）",
+         "当期の必要額を算定する → 既設定残高を差し引く → 差額だけを繰り入れる（売掛金分は販管費、貸付金分は営業外費用）",
+         "当期の必要額を算定する → 既設定残高を加算する → 合計額を繰り入れる（貸付金に対する分も含めて、すべて販管費で一括して処理する）"],
+    a: "イ",
+    ex: "設定は差額補充法がベースで、繰入額＝必要額－既設定残高。繰入額の表示は、売掛金に対する分が販売費及び一般管理費、貸付金に対する分が営業外費用になる。" },
+  { id: 1015, d: "keisan", ch: "計算第6回", tp: "手形の裏書・割引", f: "proc", rk: "B", so: 9103, tg: "計算第6回 講義・テキスト②", pg: "計算テキスト②",
+    q: "受取手形を銀行で割り引いたときの処理の流れとして、正しいものはどれか。",
+    cs: ["受取手形を消去する → 割引料は受取利息（営業外収益）として処理する → 満期日に手形の決済を確認し、改めて決済の仕訳を行う",
+         "割引料を付随費用として手形の取得原価に含める → 受取手形は満期まで残す → 満期日に消去する（その間、貸借対照表には手形の額面で表示し続ける）",
+         "割引料を手形売却損として処理する → 受取手形を消去し、差額を現金等で受け取る → 満期日に手形が決済されても仕訳は行わない"],
+    a: "ウ",
+    ex: "手形の割引では、割引料を手形売却損として処理し、受取手形を消去する。裏書・割引のいずれも、満期日に手形が決済されても仕訳は行わない（不渡りになった場合に初めて処理が発生する）。" },
+  { id: 1016, d: "keisan", ch: "計算第6回", tp: "有価証券の減損処理", f: "proc", rk: "A", so: 9104, tg: "計算第6回 講義・テキスト②", pg: "計算テキスト②",
+    q: "売買目的以外の有価証券の減損処理の流れとして、正しいものはどれか。",
+    cs: ["時価の著しい下落（原則50％以上）を確認する → 回復見込みがない又は不明であることを判定する → 時価まで切り下げ、差額を特別損失に計上する（切放方式で翌期の洗替はしない）",
+         "時価が少しでも下落したら、下落率や回復見込みを問わず直ちに切り下げる → 差額はその他有価証券評価差額金に計上する → 翌期首に洗替えを行い、帳簿価額を取得原価に戻す",
+         "回復見込みの有無の判定を最初に行う → 下落率にかかわらず時価を取得原価まで切り上げる → その差額を特別損失として損益計算書に計上する（切放方式ではなく洗替方式で処理する）"],
+    a: "ア",
+    ex: "減損の要件は、時価の著しい下落（原則50％以上）かつ回復見込みがない又は不明なこと。要件を満たせば時価まで切り下げ、差額は特別損失に落とす（全部純資産直入法でもP/Lを通る）。切放方式のため翌期の洗替はなく、減損後は減損後の帳簿価額を基準に通常の評価を行う。" },
+  { id: 1017, d: "keisan", ch: "計算第6回", tp: "償却原価法", f: "proc", rk: "A", so: 9105, tg: "計算第6回 講義・テキスト②", pg: "計算テキスト②",
+    q: "割引発行された満期保有目的の債券に償却原価法を適用する手順として、正しいものはどれか。",
+    cs: ["額面と取得価額の差額を残存期間で配分する → 償却額を有価証券評価損益（営業外損益）として処理する → 帳簿価額は取得価額のまま据え置く",
+         "額面と取得価額の差額を残存期間で配分する → 償却額を有価証券利息に加算する → 帳簿価額（償却原価）が額面に近づいていく",
+         "償却額は売却のときにだけまとめて処理する → 決算では何もしない → 売却損益に含めて計算する"],
+    a: "イ",
+    ex: "償却額は、定額法でも利息法でも有価証券利息の調整として処理する（割引発行はプラス、割増発行はマイナス）。これにより帳簿価額が償却原価として額面に近づき、売却時は売却時点まで償却した後の償却原価が帳簿価額になる。" },
+  { id: 1018, d: "keisan", ch: "計算第8回", tp: "減損の3ステップ", f: "proc", rk: "A", so: 9106, tg: "計算第8回 講義・テキスト3", pg: "計算テキスト3",
+    q: "減損損失を測定する（STEP3）手順として、正しいものはどれか。",
+    cs: ["回収可能価額を算定する → 帳簿価額と比較し、高い方の金額まで帳簿価額を切り上げる → その差額を特別損失として損益計算書に計上する → 次期以降も切り上げ後の価額で償却を続ける",
+         "割引前将来キャッシュ・フローの総額を算定する → 帳簿価額との差額をそのまま減損損失の金額とする → その全額を特別損失として損益計算書に計上する（回収可能価額は算定しない）",
+         "回収可能価額（正味売却価額と使用価値の高い方）を算定する → 帳簿価額から回収可能価額を差し引く → その差額を減損損失として特別損失に計上する"],
+    a: "ウ",
+    ex: "測定（STEP3）は、帳簿価額－回収可能価額が減損損失になる。回収可能価額は正味売却価額（時価－処分費用見込額）と使用価値（将来CFの現在価値）のうち高い方。STEP2の認識の判定は割引前CFで比較し、STEP3は割引後（現在価値）で測る使い分けが核心。" },
+  { id: 1019, d: "keisan", ch: "計算第8回", tp: "減損後の処理と表示", f: "proc", rk: "B", so: 9107, tg: "計算第8回 講義・テキスト3", pg: "計算テキスト3",
+    q: "減損処理を行った後の取扱いとして、正しいものはどれか。",
+    cs: ["減損後の帳簿価額を基礎に残存耐用年数にわたり減価償却する → 回収可能価額が回復しても戻入れは行わない → 貸借対照表は直接減額方式が原則",
+         "減損後も従来の帳簿価額を基礎に減価償却を続ける → 回復した場合は戻入れを行う → 貸借対照表は間接控除方式が原則（損益計算書では特別損失に表示する）",
+         "減損した資産については以後の減価償却を停止する → 処分したときにだけ損失を確定させる → 損益計算書では販売費及び一般管理費に表示する（貸借対照表の表示は従来どおりとする）"],
+    a: "ア",
+    ex: "減損後は切り下げ後の帳簿価額を基礎に、残存耐用年数にわたり減価償却する。戻入れは行わない（切離し法のみ）。表示は、損益計算書では特別損失、貸借対照表では直接減額方式が原則（間接控除方式も容認）。" },
+  { id: 1020, d: "keisan", ch: "計算第8回", tp: "共用資産の減損", f: "proc", rk: "B", so: 9108, tg: "計算第8回 講義・テキスト3", pg: "計算テキスト3",
+    q: "共用資産の減損を原則法で判定する手順として、正しいものはどれか。",
+    cs: ["共用資産の帳簿価額を一定の配分基準で各グループに配分する → 配分後の金額で各グループの判定を行う → 認識した損失は帳簿価額の比率で各グループに分け直す",
+         "各グループ単独で判定する → 共用資産を含むより大きな単位で判定する → 増加額は共用資産に負担させる（限度は帳簿価額－正味売却価額）",
+         "より大きな単位だけで判定を行う → 増加額は各グループに均等に配分して負担させる → 共用資産自体の帳簿価額は切り下げない（各グループ単独の判定は省略する）"],
+    a: "イ",
+    ex: "原則法は、各グループ単独の判定の後に共用資産を含む「より大きな単位」で判定し、増加額は共用資産（限度＝帳簿価額－正味売却価額）から負担させる。すでに回収可能価額まで切り下げ済みのグループには配分しない。「配分」が先に来るのは例外法。" }
+];
+var CARDS = DATA ? DATA.cards.concat(EXTRA_CARDS) : [];
 var CARDMAP = {};
 CARDS.forEach(function (c) { CARDMAP[c.id] = c; });
 var DICTMAP = {};
@@ -387,7 +507,7 @@ function fmtDayShort(ymd) { var p = ymd.split("-"); return Number(p[1]) + "/" + 
 
 /* ---------------- state ---------------- */
 function emptyState() {
-  return { v: 1, progress: {}, days: {}, settings: { targetDate: null, dailyMinutes: 15 }, resumes: {}, savedAt: null };
+  return { v: 1, progress: {}, days: {}, settings: { targetDate: null, dailyMinutes: 15, displayMode: "auto", memos: {}, reports: [] }, resumes: {}, savedAt: null };
 }
 var state = emptyState();
 var syncStatus = "loading"; /* loading | online | saving | offline */
@@ -839,6 +959,7 @@ function setSync(s) {
   syncStatus = s;
   var el = document.getElementById("syncpill");
   if (el) { el.outerHTML = syncPillHtml(); bindSyncPill(); }
+  refreshUnsyncedBadge();
 }
 function bindSyncPill() {
   var el = document.getElementById("syncpill");
@@ -854,6 +975,117 @@ function syncPillHtml() {
   else if (syncStatus === "saving") { cls += " busy"; label = "保存中…"; }
   return '<span class="' + cls + '" id="syncpill"><span class="dot"></span>' + label + "</span>";
 }
+
+/* ---------------- feature helpers (memos / reports / theme / sync count) ----------------
+   Memos, error reports and the display-mode choice ride inside
+   state.settings, which persistLocal() already keeps on this device. */
+function ensureExtras() {
+  var s = state.settings;
+  if (!s.memos) s.memos = {};
+  if (!s.reports) s.reports = [];
+  if (!s.displayMode) s.displayMode = "auto";
+  if (!s.badges) s.badges = {};
+  return s;
+}
+function cardMemo(id) { return ensureExtras().memos[String(id)] || ""; }
+function isReported(id) {
+  return ensureExtras().reports.some(function (r) { return String(r.id) === String(id); });
+}
+function applyDisplayMode() {
+  var m = ensureExtras().displayMode;
+  if (m === "dark" || m === "light") document.documentElement.setAttribute("data-theme", m);
+  else document.documentElement.removeAttribute("data-theme");
+}
+/* How many records have not reached Supabase yet: changed progress rows,
+   changed day rows and queued answer-history rows. Zero hides the badge. */
+function unsyncedCount() {
+  var n = pendingAttempts.length, k;
+  for (k in state.progress) if (savedProgress[k] !== JSON.stringify(state.progress[k])) n++;
+  for (k in state.days) if (savedDays[k] !== JSON.stringify({ sec: state.days[k].sec || 0 })) n++;
+  return n;
+}
+function unsyncedBadgeHtml() {
+  var n = unsyncedCount();
+  if (!n) return '<span id="unsynced-badge" hidden></span>';
+  return '<span class="pill busy" id="unsynced-badge"><span class="dot"></span>未送信の記録 <strong>' + n + "件</strong></span>";
+}
+function refreshUnsyncedBadge() {
+  var el = document.getElementById("unsynced-badge");
+  if (el) { var tmp = document.createElement("div"); tmp.innerHTML = unsyncedBadgeHtml(); el.replaceWith(tmp.firstChild); }
+}
+/* Topics touched before but not studied for 14+ days (forgetting alert). */
+function staleTopics() {
+  var cutoff = Date.now() - 14 * DAY_MS, agg = {};
+  CARDS.forEach(function (c) {
+    var p = prog(c.id);
+    if (!p || !p.ls) return;
+    var key = c.ch + "::" + baseTopic(c.tp);
+    if (!agg[key]) agg[key] = { ch: c.ch, tp: baseTopic(c.tp), last: 0, cards: [] };
+    if (p.ls > agg[key].last) agg[key].last = p.ls;
+    agg[key].cards.push(c);
+  });
+  return Object.keys(agg).map(function (k) { return agg[k]; })
+    .filter(function (t) { return t.last <= cutoff; })
+    .sort(function (a, b) { return a.last - b.last; });
+}
+/* Topics whose latest answer was a confident miss (危険な思い込み). */
+function overconfidentTopics() {
+  var agg = {};
+  CARDS.forEach(function (c) {
+    var p = prog(c.id);
+    if (!p || p.r !== "missed" || p.cf !== "sure") return;
+    var key = c.ch + "::" + baseTopic(c.tp);
+    if (!agg[key]) agg[key] = { ch: c.ch, tp: baseTopic(c.tp), cards: [] };
+    agg[key].cards.push(c);
+  });
+  return Object.keys(agg).map(function (k) { return agg[k]; })
+    .sort(function (a, b) { return b.cards.length - a.cards.length || chIdx(a.ch) - chIdx(b.ch); });
+}
+/* This week (Monday start, study-day calendar) in one object. Answer
+   counts and accuracy come from per-card progress timestamps, which are
+   the figures that survive sync; seconds come from state.days. */
+function weeklySummary() {
+  var today = todayStr();
+  var tp = today.split("-").map(Number);
+  var dow = (new Date(Date.UTC(tp[0], tp[1] - 1, tp[2])).getUTCDay() + 6) % 7; /* Mon=0 */
+  var mon = dateAdd(today, -dow), sun = dateAdd(mon, 6);
+  var sec = 0, daysStudied = 0, answered = 0, known = 0, mastered = 0;
+  for (var i = 0; i < 7; i++) {
+    var d = dateAdd(mon, i);
+    var rec = state.days[d];
+    if (rec && rec.sec) sec += rec.sec;
+    if (d <= today && studiedDates()[d]) daysStudied++;
+  }
+  Object.keys(state.progress).forEach(function (k) {
+    var p = state.progress[k];
+    if (!p || !p.ls) return;
+    var d = studyDateStr(new Date(p.ls));
+    if (d >= mon && d <= sun && d <= today) {
+      answered++;
+      if (p.r === "known") known++;
+      if (p.m) mastered++;
+    }
+  });
+  return { mon: mon, sun: sun, sec: sec, answered: answered, known: known, mastered: mastered, days: daysStudied, rate: answered ? known / answered : null };
+}
+
+/* ---------------- wake lock (drill sessions) ---------------- */
+var wakeLock = null;
+function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return; /* unsupported: silently off */
+  try {
+    navigator.wakeLock.request("screen").then(function (wl) {
+      wakeLock = wl;
+      wl.addEventListener("release", function () { if (wakeLock === wl) wakeLock = null; });
+    }).catch(function () {});
+  } catch (e) {}
+}
+function releaseWakeLock() {
+  if (wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+}
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden && S && !S.done && view.tab === "session") requestWakeLock();
+});
 
 /* ---------------- progress helpers ---------------- */
 function prog(id) { return state.progress[id] || null; }
@@ -1091,7 +1323,7 @@ function armReveal() {}
    question in a session, a committed swipe — queue it explicitly with
    queueSlide(). prefers-reduced-motion disables the slide entirely. */
 var lastViewSig = null, pendingSlide = null, slideToken = 0;
-var VIEW_DEPTH = { auth: 0, newpw: 1, home: 0, topics: 0, dict: 0, progress: 0, topic: 1, random: 1, session: 2, done: 3 };
+var VIEW_DEPTH = { auth: 0, newpw: 1, home: 0, topics: 0, dict: 0, progress: 0, topic: 1, random: 1, stale: 1, session: 2, done: 3 };
 function viewSig() { return { tab: view.tab, ch: view.chapter || "", tp: view.topic || "", tch: topicChapter || "" }; }
 function sigKey(s) { return s.tab + "|" + s.ch + "|" + s.tp + "|" + s.tch; }
 function slideDirBetween(prev, cur) {
@@ -1443,6 +1675,7 @@ function render() {
   else if (view.tab === "dict") renderDict();
   else if (view.tab === "progress") renderProgress();
   else if (view.tab === "random") renderRandomSetup();
+  else if (view.tab === "stale") renderStale();
   else if (view.tab === "session") renderSession();
   else if (view.tab === "done") renderDone();
   armReveal();
@@ -1497,6 +1730,13 @@ function renderHome() {
   if (streak > 0) html += '<span class="pill"><strong>' + streak + "日</strong>連続で学習中</span>";
   html += '<span class="pill">今日のドリル <strong>' + esc(fmtDur(today.sec)) + '</strong>（' + today.n + '問）</span>';
   html += '<span class="pill">' + (goalMet ? "目標達成" : "目標 " + (state.settings.dailyMinutes || 15) + "分") + "</span></div>";
+
+  /* Forgetting alert: the ONLY new element on home, and only a slim
+     one-line banner when a started topic has gone 14+ days untouched. */
+  var stale = staleTopics();
+  if (stale.length) {
+    html += '<button type="button" class="stalebanner" id="btn-stale"><span aria-hidden="true">⚠</span><span>14日以上触っていない論点が' + stale.length + '件あります</span><span class="chev">›</span></button>';
+  }
 
   if (legacyAvailable && legacyState) {
     html += '<section class="glass card"><h2 style="font-size:16.5px">以前の記録が見つかりました</h2>' +
@@ -1558,7 +1798,7 @@ function renderHome() {
     }).join("") + "</div>" +
     '<p class="tiny dim" style="margin:8px 2px 0">' + (homeDeck === "keisan"
       ? "計算デッキだけを表示しています。今日のタスクも計算から組みます。"
-      : homeDeck === "all" ? "基礎・実戦・計算の全1,012問が対象です。"
+      : homeDeck === "all" ? "基礎・実戦・計算の全" + CARDS.length + "問が対象です。"
       : DECK_LABELS[homeDeck] + "だけを表示しています。今日のタスクの復習期限分は、他の階層の期限も落とさず横断して組みます。") + "</p>" +
     '<div class="seg" style="margin-top:12px"><button type="button" data-order="sequential" class="' + (homeOrder === "sequential" ? "sel" : "") + '">順番どおり</button>' +
     '<button type="button" data-order="random" class="' + (homeOrder === "random" ? "sel" : "") + '">ランダム順</button></div>' +
@@ -1603,8 +1843,10 @@ function renderHome() {
   var bcn = document.getElementById("btn-claim-no");
   if (bcn) bcn.addEventListener("click", function () { legacyAvailable = false; legacyDismissed = true; persistLocal(); renderHome(); });
   document.getElementById("btn-today").addEventListener("click", function () {
-    startSession({ mode: "all", order: "sequential", deck: homeDeck, cardIds: plan.items.map(function (c) { return c.id; }), label: "今日のタスク" });
+    startSession({ mode: "all", order: "sequential", deck: homeDeck, cardIds: plan.items.map(function (c) { return c.id; }), label: "今日のタスク", todayTask: true });
   });
+  var bst = document.getElementById("btn-stale");
+  if (bst) bst.addEventListener("click", function () { view = { tab: "stale" }; render(); window.scrollTo(0, 0); });
   var brt = document.getElementById("btn-resumes-toggle");
   if (brt) brt.addEventListener("click", function () { resumesOpen = !resumesOpen; renderHome(); });
   var rb = document.querySelectorAll("[data-resume]");
@@ -1651,6 +1893,36 @@ function renderHome() {
     view = { tab: "topic", chapter: parts[0], topic: parts.slice(1).join("::") }; render(); window.scrollTo(0, 0);
   });
 }
+/* ---------------- stale topics (forgetting alert list) ---------------- */
+function renderStale() {
+  var stale = staleTopics();
+  var html = '<div class="wrap rise"><div class="sess-head"><button type="button" class="xbtn" id="btn-stale-back" aria-label="ホームに戻る">‹</button>' +
+    '<h1 class="page serif" style="margin:0;font-size:22px">14日以上触っていない論点</h1></div>' +
+    '<p class="sub" style="margin-top:8px">着手したのに最終学習から14日以上たった論点です。タップするとその論点の問題をまとめて解けます。</p>';
+  if (!stale.length) {
+    html += '<section class="glass card"><p class="dim" style="margin:0">対象の論点はありません。</p></section>';
+  } else {
+    html += '<section class="glass card">';
+    stale.forEach(function (t, i) {
+      var days = Math.floor((Date.now() - t.last) / DAY_MS);
+      html += '<button type="button" class="rowline" data-stale="' + i + '"><span class="grow"><span class="ttl">' + esc(t.tp) + '</span>' +
+        '<span class="meta" style="display:block">' + esc(t.ch) + " ・ 最終学習から" + days + "日 ・ " + t.cards.length + '問</span></span><span class="tag warn">' + days + '日</span><span class="chev">›</span></button>';
+    });
+    html += "</section>";
+  }
+  html += "</div>" + tabbarHtml("home");
+  appEl().innerHTML = html;
+  applyViewSlide();
+  bindTabs();
+  document.getElementById("btn-stale-back").addEventListener("click", function () { view = { tab: "home" }; render(); window.scrollTo(0, 0); });
+  var bs = document.querySelectorAll("[data-stale]");
+  for (var i = 0; i < bs.length; i++) bs[i].addEventListener("click", function () {
+    var t = stale[Number(this.getAttribute("data-stale"))];
+    var cards = CARDS.filter(function (c) { return c.ch === t.ch && baseTopic(c.tp) === t.tp; });
+    startSession({ mode: "all", chapter: t.ch, topic: t.tp, order: "sequential", deck: "all", cardIds: cards.map(function (c) { return c.id; }), label: t.ch + " " + t.tp });
+  });
+}
+
 /* ---------------- topics ---------------- */
 function topicAgg(chapter) {
   var agg = {};
@@ -1660,6 +1932,16 @@ function topicAgg(chapter) {
     agg[key].cards.push(c);
   });
   return Object.keys(agg).map(function (k) { return agg[k]; });
+}
+/* Mastery colour for the chapter topic map (feature 16): one status per
+   topic — 定着 green / 苦手 red / 復習期限 orange / 学習中 blue / 未着手 gray. */
+function topicStatusInfo(cards) {
+  var s = cardStats(cards);
+  if (s.total > 0 && s.mastered === s.total) return { key: "mastered", label: "定着", color: "var(--good)" };
+  if (s.weak > 0) return { key: "weak", label: "苦手", color: "var(--accent2)" };
+  if (s.due > 0) return { key: "due", label: "復習期限", color: "var(--warn)" };
+  if (s.attempted > 0) return { key: "learning", label: "学習中", color: "var(--accent)" };
+  return { key: "fresh", label: "未着手", color: "var(--faint)" };
 }
 function topicStatusHtml(cards) {
   var s = cardStats(cards);
@@ -1678,11 +1960,21 @@ function renderTopics() {
   html += '<div class="seg wrap" style="margin-bottom:4px">' + CHAPTER_ORDER.map(function (ch) {
     return '<button type="button" data-tch="' + esc(ch) + '" class="' + (topicChapter === ch ? "sel" : "") + '">' + esc(ch) + "</button>";
   }).join("") + "</div>";
-  html += '<section class="glass card"><h2 style="font-size:16.5px">' + esc(chapterLabel(topicChapter)) + "</h2>";
+  var chCards = CARDS.filter(function (c) { return c.ch === topicChapter; });
+  var passed = ensureExtras().badges[topicChapter];
+  html += '<section class="glass card"><h2 style="font-size:16.5px">' + esc(chapterLabel(topicChapter)) + "</h2>" +
+    '<div class="maplegend"><span><span class="statusdot" style="background:var(--good)"></span>定着</span>' +
+    '<span><span class="statusdot" style="background:var(--accent2)"></span>苦手</span>' +
+    '<span><span class="statusdot" style="background:var(--warn)"></span>復習期限</span>' +
+    '<span><span class="statusdot" style="background:var(--accent)"></span>学習中</span>' +
+    '<span><span class="statusdot" style="background:var(--faint)"></span>未着手</span></div>' +
+    '<button type="button" class="bigbtn" id="btn-chapter-test">章テストを受ける（全' + chCards.length + '問・全形式ミックス）</button>' +
+    '<p class="tiny dim" style="margin:8px 2px 0">この章の全問題をシャッフルして出題します。正答率80%以上で合格です。' + (passed ? '（合格済み: 正答率' + Math.round(passed.rate * 100) + '%）' : "") + "</p>";
   topicAgg(topicChapter).forEach(function (t) {
     var de = DICTMAP[topicChapter + "::" + t.tp];
-    html += '<button type="button" class="rowline" data-opentopic="' + esc(t.tp) + '"><span class="grow"><span class="ttl">' + esc(t.tp) + "</span>" +
-      '<span class="meta" style="display:block">' + t.cards.length + "問" + (de ? " ・ ランク" + esc(de.rank) : "") + "</span></span>" +
+    var info = topicStatusInfo(t.cards);
+    html += '<button type="button" class="rowline" data-opentopic="' + esc(t.tp) + '"><span class="statusdot" style="background:' + info.color + '" aria-hidden="true"></span><span class="grow"><span class="ttl">' + esc(t.tp) + "</span>" +
+      '<span class="meta" style="display:block">' + t.cards.length + "問" + (de ? " ・ ランク" + esc(de.rank) : "") + " ・ " + info.label + "</span></span>" +
       topicStatusHtml(t.cards) + '<span class="chev">›</span></button>';
   });
   html += "</section></div>" + tabbarHtml("topics");
@@ -1694,6 +1986,10 @@ function renderTopics() {
   var os = document.querySelectorAll("[data-opentopic]");
   for (var j = 0; j < os.length; j++) os[j].addEventListener("click", function () {
     view = { tab: "topic", chapter: topicChapter, topic: this.getAttribute("data-opentopic") }; render(); window.scrollTo(0, 0);
+  });
+  document.getElementById("btn-chapter-test").addEventListener("click", function () {
+    var ids = shuffleArr(chCards.slice()).map(function (c) { return c.id; });
+    startSession({ mode: "all", order: "random", deck: "all", cardIds: ids, label: topicChapter + " 章テスト", chapterTest: topicChapter });
   });
 }
 function figureHtml(fig, heading) {
@@ -1840,7 +2136,7 @@ function renderDict() {
   if (hadFocus) { try { caret = prevInput.selectionStart; } catch (e) {} }
   var html = '<div class="wrap rise"><h1 class="page serif">論点辞書・検索</h1>' +
     '<p class="sub">論点名・キーワード・問題文から探せます。全155論点（理論135・計算20）の要点を収録しています。</p>' +
-    '<form id="search-form" style="display:flex;gap:8px"><input class="searchbox" style="flex:1" id="search-input" type="search" placeholder="例: 継続性、引当金、正味売却価額…" value="' + esc(dictDraft) + '" aria-label="検索キーワード"><button type="submit" class="minibtn" style="padding:0 20px;font-size:15px">検索</button></form><div id="dict-body">';
+    '<form id="search-form" style="display:flex;gap:8px"><input class="searchbox" style="flex:1" id="search-input" type="search" placeholder="例: 継続性、引当金、正味売却価額…" value="' + esc(dictDraft) + '" aria-label="検索キーワード" autocomplete="off"><button type="submit" class="minibtn" style="padding:0 20px;font-size:15px">検索</button></form><div id="dict-suggest" class="suggestbox glass"></div><div id="dict-body">';
   if (dictResults) {
     var tps = dictResults.topics, cds = dictResults.cards;
     html += '<p class="small dim" style="margin:14px 2px 0">「' + esc(dictQuery) + "」の結果 — 論点 " + (dictResults.tTotal != null ? dictResults.tTotal : tps.length) + "件 ・ 問題 " + (dictResults.cTotal != null ? dictResults.cTotal : cds.length) + "件" +
@@ -1871,7 +2167,32 @@ function renderDict() {
      pattern the login form uses with authDraft), and give the focus back
      after a background re-render so typing can simply continue. */
   var searchInput = document.getElementById("search-input");
-  searchInput.addEventListener("input", function () { dictDraft = searchInput.value; });
+  /* Search suggestions (feature 33): as the user types, matching topic
+     names drop down; tapping one jumps straight to that topic page. */
+  var suggestEl = document.getElementById("dict-suggest");
+  function renderSuggest() {
+    var q = (searchInput.value || "").trim().toLowerCase();
+    if (q.length < 1) { suggestEl.innerHTML = ""; return; }
+    var hits = [];
+    (DATA.dict.concat(DATA.kdict)).forEach(function (e) {
+      if (hits.length >= 6) return;
+      var inTopic = e.topic.toLowerCase().indexOf(q) >= 0;
+      var inKw = (e.keywords || []).some(function (k) { return k.toLowerCase().indexOf(q) >= 0; });
+      if (inTopic || inKw) hits.push(e);
+    });
+    suggestEl.innerHTML = hits.map(function (e) {
+      return '<button type="button" class="rowline" style="padding:10px 14px" data-suggest="' + esc(e.chapter) + "::" + esc(e.topic) + '"><span class="grow"><span class="ttl" style="font-size:14px">' + esc(e.topic) + '</span>' +
+        '<span class="meta" style="display:block">' + esc(chapterLabel(e.chapter)) + '</span></span><span class="chev">›</span></button>';
+    }).join("");
+    var sb = suggestEl.querySelectorAll("[data-suggest]");
+    for (var si = 0; si < sb.length; si++) sb[si].addEventListener("click", function () {
+      var parts = this.getAttribute("data-suggest").split("::");
+      dictDraft = parts.slice(1).join("::");
+      view = { tab: "topic", chapter: parts[0], topic: parts.slice(1).join("::") }; render(); window.scrollTo(0, 0);
+    });
+  }
+  searchInput.addEventListener("input", function () { dictDraft = searchInput.value; renderSuggest(); });
+  if (hadFocus && dictDraft) renderSuggest();
   if (hadFocus) {
     searchInput.focus();
     if (caret != null) { try { searchInput.setSelectionRange(caret, caret); } catch (e) {} }
@@ -1913,6 +2234,153 @@ function renderDict() {
   });
 }
 
+/* ---------------- weekly summary image / reports / weekly test ---------------- */
+function saveWeeklyImage(ws) {
+  var cv = document.createElement("canvas");
+  cv.width = 1080; cv.height = 1080;
+  var ctx = cv.getContext("2d");
+  var dark = document.documentElement.getAttribute("data-theme") === "dark" ||
+    (!document.documentElement.getAttribute("data-theme") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  ctx.fillStyle = dark ? "#101018" : "#f4f6fb"; ctx.fillRect(0, 0, 1080, 1080);
+  ctx.fillStyle = dark ? "#409cff" : "#0a6cff"; ctx.fillRect(0, 0, 1080, 14);
+  ctx.fillStyle = dark ? "#f5f5f7" : "#1c1c1e";
+  ctx.font = "700 44px sans-serif"; ctx.fillText("今週の学習サマリー", 72, 130);
+  ctx.font = "400 30px sans-serif"; ctx.fillStyle = dark ? "#a1a1a6" : "#6e6e73";
+  ctx.fillText(fmtDayShort(ws.mon) + "（月）〜 " + fmtDayShort(ws.sun) + "（日）", 72, 185);
+  var rows = [
+    ["学習時間", fmtDur(ws.sec)],
+    ["解いた問題", ws.answered + "問"],
+    ["正答率", ws.rate == null ? "—" : Math.round(ws.rate * 100) + "%"],
+    ["定着したカード", ws.mastered + "問"],
+    ["学習日数", ws.days + "日"]
+  ];
+  ctx.fillStyle = dark ? "#f5f5f7" : "#1c1c1e";
+  rows.forEach(function (r, i) {
+    var y = 320 + i * 138;
+    ctx.font = "400 32px sans-serif"; ctx.fillStyle = dark ? "#a1a1a6" : "#6e6e73";
+    ctx.fillText(r[0], 72, y);
+    ctx.font = "800 64px sans-serif"; ctx.fillStyle = dark ? "#f5f5f7" : "#1c1c1e";
+    ctx.fillText(r[1], 72, y + 72);
+    ctx.strokeStyle = dark ? "rgba(235,235,245,.14)" : "rgba(60,60,67,.14)";
+    ctx.beginPath(); ctx.moveTo(72, y + 100); ctx.lineTo(1008, y + 100); ctx.stroke();
+  });
+  ctx.font = "400 26px sans-serif"; ctx.fillStyle = dark ? "#6e6e73" : "#9a9aa0";
+  ctx.fillText("一問一答ドリル", 72, 1020);
+  var finish = function (blob) {
+    if (!blob) { toast("画像を作れませんでした"); return; }
+    var file = null;
+    try { file = new File([blob], "weekly-summary.png", { type: "image/png" }); } catch (e) {}
+    if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+      navigator.share({ files: [file] }).catch(function () {});
+      return;
+    }
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "weekly-summary.png";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    toast("サマリー画像を保存しました");
+  };
+  if (cv.toBlob) cv.toBlob(finish, "image/png");
+  else { try { finish(null); } catch (e) { toast("画像を作れませんでした"); } }
+}
+function reportsText() {
+  var reps = ensureExtras().reports;
+  var lines = ["【一問一答 問題の誤り報告】" + reps.length + "件"];
+  reps.forEach(function (r) {
+    var c = CARDMAP[r.id];
+    if (!c) { lines.push("- [ID " + r.id + "] （カードが見つかりません）"); return; }
+    lines.push("- [ID " + c.id + "] " + c.ch + "「" + baseTopic(c.tp) + "」 " + String(c.q || "").slice(0, 60) + "…");
+  });
+  return lines.join("\n");
+}
+function copyReports() {
+  var text = reportsText();
+  var done = function () { toast("報告" + ensureExtras().reports.length + "件をまとめてコピーしました"); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+  } else { fallbackCopy(text); done(); }
+}
+function fallbackCopy(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  ta.remove();
+}
+function startWeeklyTest() {
+  var learnedTopics = {};
+  CARDS.forEach(function (c) { var p = prog(c.id); if (p && p.a > 0) learnedTopics[c.ch + "::" + baseTopic(c.tp)] = true; });
+  var pool = CARDS.filter(function (c) {
+    return (c.f === "mcq" || c.f === "proc") && c.cs && c.cs.length > 1 && learnedTopics[c.ch + "::" + baseTopic(c.tp)];
+  });
+  if (pool.length < 5) { toast("対象の問題がまだ少ないです（既習の選択問題が5問以上必要です）"); return; }
+  var ids = shuffleArr(pool.slice()).slice(0, 20).map(function (c) { return c.id; });
+  startSession({ mode: "all", order: "random", deck: "all", cardIds: ids, label: "週次総合テスト", exam: true, weeklyTest: true, timeLimitSec: ids.length * 45 });
+}
+
+function weeklySummaryHtml() {
+  var ws = weeklySummary();
+  var cell = function (label, val) {
+    return '<div class="grow"><div class="small dim b">' + label + '</div><div><span class="num tnum" style="font-size:21px">' + val + "</span></div></div>";
+  };
+  return '<section class="glass card"><h2 style="font-size:16.5px">今週のサマリー</h2>' +
+    '<p class="tiny dim" style="margin:4px 0 10px">' + fmtDayShort(ws.mon) + "（月）〜 " + fmtDayShort(ws.sun) + "（日）</p>" +
+    '<div class="abstrip">' + cell("学習時間", esc(fmtDur(ws.sec))) + cell("解いた問題", ws.answered + "問") + cell("正答率", ws.rate == null ? "—" : Math.round(ws.rate * 100) + "%") + "</div>" +
+    '<div class="abstrip" style="margin-top:10px">' + cell("定着したカード", ws.mastered + "問") + cell("学習日数", ws.days + "日") + '<div class="grow"></div></div>' +
+    '<button type="button" class="bigbtn ghost" id="btn-weekly-img">画像で保存（Instagram投稿用）</button></section>';
+}
+function weeklyTestHtml() {
+  var tp = todayStr().split("-").map(Number);
+  var isSunday = new Date(Date.UTC(tp[0], tp[1] - 1, tp[2])).getUTCDay() === 0;
+  if (!isSunday) return "";
+  return '<section class="glass card"><h2 style="font-size:16.5px">週次総合テスト</h2>' +
+    '<p class="small dim" style="margin:6px 0 0;line-height:1.8">日曜だけ開く総合テストです。既習範囲の選択問題からランダムに最大20問、制限時間つき（1問45秒）で出題します。分からない問題はスキップできます。</p>' +
+    '<button type="button" class="bigbtn" id="btn-weekly-test">週次総合テストを始める</button></section>';
+}
+function overconfidentHtml() {
+  var list = overconfidentTopics();
+  var h = '<section class="glass card"><h2 style="font-size:16.5px">危険な思い込みリスト</h2>' +
+    '<p class="small dim" style="margin:6px 0 0;line-height:1.8">「自信あり」で答えて間違えた問題を論点別に集計しています。タップすると、その問題だけをまとめて解き直せます。</p>';
+  if (!list.length) {
+    h += '<p class="small dim" style="margin:10px 0 0">いまのところ、自信ありで間違えた問題はありません。</p>';
+  } else {
+    list.forEach(function (t, i) {
+      h += '<button type="button" class="rowline" data-oc="' + i + '"><span class="grow"><span class="ttl">' + esc(t.tp) + '</span>' +
+        '<span class="meta" style="display:block">' + esc(t.ch) + "</span></span>" +
+        '<span class="tag bad">' + t.cards.length + '件</span><span class="chev">›</span></button>';
+    });
+  }
+  return h + "</section>";
+}
+function badgesHtml() {
+  var badges = ensureExtras().badges;
+  var cells = CHAPTER_ORDER.map(function (ch) {
+    var b = badges[ch];
+    return '<span class="badgecell' + (b ? " earned" : "") + '">' + (b ? "✓ " : "") + esc(ch) + (b ? " 合格" : "") + "</span>";
+  }).join("");
+  var earned = CHAPTER_ORDER.filter(function (ch) { return badges[ch]; }).length;
+  return '<section class="glass card"><h2 style="font-size:16.5px">章バッジ</h2>' +
+    '<p class="small dim" style="margin:6px 0 10px">章テストで正答率80%以上を取った章にバッジが付きます（' + earned + " / " + CHAPTER_ORDER.length + '章）。</p>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:7px">' + cells + "</div></section>";
+}
+function reportsHtml() {
+  var reps = ensureExtras().reports;
+  var h = '<section class="glass card"><h2 style="font-size:16.5px">問題の誤り報告</h2>';
+  if (!reps.length) {
+    h += '<p class="small dim" style="margin:6px 0 0;line-height:1.8">報告済みの問題はまだありません。ドリルの解説画面にある「問題の誤りを報告」から記録できます。</p>';
+  } else {
+    reps.forEach(function (r) {
+      var c = CARDMAP[r.id];
+      h += '<div class="rowline"><span class="grow"><span class="ttl" style="white-space:normal">' + (c ? esc(String(c.q || "").slice(0, 60)) + "…" : "（カードが見つかりません）") + '</span>' +
+        '<span class="meta" style="display:block">' + (c ? esc(c.ch) + " ・ " + esc(baseTopic(c.tp)) + " ・ " : "") + "ID " + r.id + "</span></span></div>";
+    });
+    h += '<button type="button" class="bigbtn" id="btn-reports-copy">報告をまとめてコピー（' + reps.length + '件）</button>' +
+      '<button type="button" class="bigbtn ghost" id="btn-reports-clear">報告をすべて消す</button>';
+  }
+  return h + "</section>";
+}
+
 /* ---------------- progress / settings ---------------- */
 function renderProgress() {
   var all = cardStats(CARDS);
@@ -1944,7 +2412,7 @@ function renderProgress() {
 
   var html = '<div class="wrap rise"><h1 class="page serif">進捗・設定</h1>' +
     '<p class="sub">学習記録はSupabase（外部データベース）に、ログイン中のアカウント専用で保存されます。どの端末で開いても、ログインすれば続きから使えます。</p>' +
-    '<div class="topbar" style="padding-top:0">' + syncPillHtml() +
+    '<div class="topbar" style="padding-top:0">' + syncPillHtml() + unsyncedBadgeHtml() +
     '<button type="button" class="pill" id="btn-sync">今すぐ同期</button></div>' +
     '<section class="glass card"><h2 style="font-size:16.5px">アカウント</h2>' +
     '<p class="small dim" style="margin:6px 0 0">ログイン中: <span class="b" style="color:var(--ink)">' + esc(auth.email || "") + '</span></p>' +
@@ -1956,12 +2424,21 @@ function renderProgress() {
     (daysLeft != null ? '<div class="grow"><div class="small dim b">目標日まで</div><div><span class="num tnum">' + daysLeft + '</span> <span class="dim">日</span></div></div>' : "") +
     '</div><div class="dots14">' + days14 + '</div><p class="tiny dim" style="margin:8px 0 0">直近14日（色つき＝ドリルを解いた日）</p></section>' +
     '<section class="glass card"><h2 style="font-size:16.5px">直近7日のドリル時間</h2><div class="weekbars">' + week + "</div></section>" +
+    weeklySummaryHtml() +
+    weeklyTestHtml() +
+    overconfidentHtml() +
+    badgesHtml() +
     '<section class="glass card"><h2 style="font-size:16.5px">章別の進み具合</h2>' + chRows + "</section>" +
     '<section class="glass card"><h2 style="font-size:16.5px">設定</h2>' +
     '<p class="small dim" style="margin:6px 0 0">目標日（短答式試験の日など）と、毎日のドリルの目標時間を設定します。「今日のタスク」の分量に使われます。</p>' +
     '<div class="field"><label for="set-date">目標日</label><input type="date" id="set-date" value="' + esc(td || "") + '"></div>' +
     '<div class="field"><label for="set-min">1日の目標時間（分）</label><input type="number" id="set-min" min="5" max="60" step="5" value="' + (state.settings.dailyMinutes || 15) + '"></div>' +
+    '<div class="field"><label for="set-display">表示モード</label><select id="set-display">' +
+    '<option value="auto"' + (ensureExtras().displayMode === "auto" ? " selected" : "") + '>自動（端末の設定に合わせる）</option>' +
+    '<option value="light"' + (ensureExtras().displayMode === "light" ? " selected" : "") + '>ライト固定</option>' +
+    '<option value="dark"' + (ensureExtras().displayMode === "dark" ? " selected" : "") + '>ダーク固定</option></select></div>' +
     '<button type="button" class="bigbtn" id="btn-settings">設定を保存</button></section>' +
+    reportsHtml() +
     '<section class="glass card"><h2 style="font-size:16.5px">記録について</h2>' +
     '<p class="small dim" style="margin:6px 0 0;line-height:1.8">記録の保存先はSupabaseの無料枠プロジェクトです。進捗はカード別、日ごとの学習時間と回答履歴も、それぞれあなたのユーザーIDに紐づけて保存され、データベース側のルール（RLS）で本人の分しか読み書きできないようになっています。通信できないときは、この画面を開いている間だけ記録を保持し、接続が戻ったときに保存し直します。設定（目標日・目標時間）と中断中のドリルは、この端末のブラウザ内にだけ保持されます。Muse内の理論一問一答アプリとは別の記録として育ちます。</p>' +
     (legacyAvailable ? '<button type="button" class="bigbtn" id="btn-claim2">以前の記録をこのアカウントに引き継ぐ</button>' : "") + '</section>' +
@@ -1985,7 +2462,27 @@ function renderProgress() {
     settingsTouched = true;
     state.settings.targetDate = /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
     state.settings.dailyMinutes = (isFinite(m) && m >= 5 && m <= 60) ? Math.round(m) : 15;
+    var dm = document.getElementById("set-display");
+    if (dm) { ensureExtras().displayMode = dm.value; applyDisplayMode(); }
+    persistLocal();
     scheduleSave(); toast("設定を保存しました"); renderProgress();
+  });
+  var bwi = document.getElementById("btn-weekly-img");
+  if (bwi) bwi.addEventListener("click", function () { saveWeeklyImage(weeklySummary()); });
+  var bwt = document.getElementById("btn-weekly-test");
+  if (bwt) bwt.addEventListener("click", startWeeklyTest);
+  var ocList = overconfidentTopics();
+  var ocb = document.querySelectorAll("[data-oc]");
+  for (var oi = 0; oi < ocb.length; oi++) ocb[oi].addEventListener("click", function () {
+    var t = ocList[Number(this.getAttribute("data-oc"))];
+    startSession({ mode: "all", order: "sequential", deck: "all", cardIds: t.cards.map(function (c) { return c.id; }), label: "思い込みチェック: " + t.tp });
+  });
+  var brc = document.getElementById("btn-reports-copy");
+  if (brc) brc.addEventListener("click", copyReports);
+  var brl = document.getElementById("btn-reports-clear");
+  if (brl) brl.addEventListener("click", function () {
+    ensureExtras().reports = [];
+    persistLocal(); toast("報告をすべて消しました"); renderProgress();
   });
 }
 /* ---------------- random drill setup ----------------
@@ -2159,6 +2656,7 @@ function startSession(spec) {
   renderSession();
   window.scrollTo(0, 0);
   startTimer();
+  requestWakeLock();
 }
 function persistSnapshot() {
   if (!S || S.done) return;
@@ -2196,6 +2694,11 @@ function startTimer() {
     S.elapsed += 1;
     var el = document.getElementById("timer-clock");
     if (el) el.textContent = fmtClock(S.elapsed);
+    if (S.spec.timeLimitSec) {
+      var lc = document.getElementById("limit-clock");
+      if (lc) lc.textContent = fmtClock(Math.max(0, S.spec.timeLimitSec - S.elapsed));
+      if (S.elapsed >= S.spec.timeLimitSec) { toast("制限時間になりました。ここまでの回答で終了します"); finishSession(); return; }
+    }
     if (S.elapsed % 15 === 0) { flushStudyTime(); persistSnapshot(); }
   }, 1000);
 }
@@ -2204,6 +2707,21 @@ document.addEventListener("visibilitychange", function () {
   if (document.hidden) { flushStudyTime(); persistSnapshot(); if (dirty && !saving) doSave(); }
 });
 
+/* Explanation keyword emphasis (feature 26), kept restrained: the
+   topic's dictionary keywords, 「quoted」 terms and figures with units
+   are bolded; everything else stays plain. Runs on the escaped text. */
+function hlExpl(text, card) {
+  var h = esc(text);
+  var de = card ? dictEntryFor(card) : null;
+  var kws = de && de.keywords ? de.keywords.slice().sort(function (a, b) { return b.length - a.length; }) : [];
+  kws.forEach(function (k) {
+    var ek = esc(k);
+    if (ek && h.indexOf(ek) >= 0) h = h.split(ek).join("<strong>" + ek + "</strong>");
+  });
+  h = h.replace(/「([^」]{1,30})」/g, "「<strong>$1</strong>」");
+  h = h.replace(/(\d[\d,]*\.?\d*\s*(?:%|％|年|月|日|倍))/g, "<strong>$1</strong>");
+  return h;
+}
 function displayInfo(card) {
   var order = S.orders[card.id] || card.cs.map(function (_, i) { return i; });
   var displayChoices = order.map(function (oi) { return card.cs[oi]; });
@@ -2248,6 +2766,15 @@ function finishSession() {
   delete state.resumes[S.key];
   scheduleSave();
   stopTimer();
+  releaseWakeLock();
+  /* Chapter-test pass (80%+) earns the chapter's badge (feature 27). */
+  if (S.spec.chapterTest) {
+    var tot = (S.tally.known || 0) + (S.tally.shaky || 0) + (S.tally.missed || 0);
+    if (tot > 0 && S.tally.known / tot >= 0.8) {
+      ensureExtras().badges[S.spec.chapterTest] = { rate: S.tally.known / tot, at: todayStr() };
+      persistLocal();
+    }
+  }
   view = { tab: "done" };
   renderDone();
   window.scrollTo(0, 0);
@@ -2256,6 +2783,7 @@ function exitSession() {
   flushStudyTime();
   persistSnapshot();
   stopTimer();
+  releaseWakeLock();
   /* Go back to the screen the session was started from (search results, a
      topic page, …), restoring its scroll position; home only when the
      session was started there or the origin is unknown. */
@@ -2277,6 +2805,7 @@ function openDictFromSession(entry) {
   flushStudyTime();
   persistSnapshot();
   stopTimer();
+  releaseWakeLock();
   S = null;
   topicChapter = entry.chapter;
   view = { tab: "topic", chapter: entry.chapter, topic: entry.topic };
@@ -2350,6 +2879,7 @@ function renderSession() {
   html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">' +
     '<span class="timerpill' + (S.paused ? " paused" : "") + '"><span id="timer-clock" class="tnum">' + fmtClock(S.elapsed) + '</span><span class="st">' + (S.paused ? "一時停止中" : "計測中") + "</span></span>" +
     '<button type="button" class="pausebtn" id="btn-pause">' + (S.paused ? "再開する" : "一時停止") + "</button>" +
+    (S.spec.timeLimitSec ? '<span class="timerpill"><span id="limit-clock" class="tnum">' + fmtClock(Math.max(0, S.spec.timeLimitSec - S.elapsed)) + '</span><span class="st">制限時間の残り</span></span>' : "") +
     '<span class="tiny dim">' + (S.spec.label ? esc(S.spec.label) + " ・ " : "") + "画面を離れている間は数えません</span></div>";
   if (isExam) html += '<p class="small b" style="color:var(--accent2);margin:8px 2px 0">本番形式: 解いている間は正解を表示しません（答え合わせは最後に一括）</p>';
 
@@ -2378,19 +2908,24 @@ function renderSession() {
     }
     if (overconfidentMiss) html += '<div class="notice badbox">自信ありで間違えました。「知っているつもり」で落としやすい論点です。</div>';
     if (autoCorrect && S.confidence === "guess") html += '<div class="notice warnbox">「あやふや」のまま正解でした。まぐれの可能性があるので、定着カウントには入れず、3日後に短い間隔でもう一度出します。</div>';
-    html += '<p class="explabel">解説</p><p class="expl">' + esc(card.ex) + "</p>";
+    html += '<p class="explabel">解説</p><p class="expl">' + hlExpl(card.ex, card) + "</p>";
     if (tags.length) html += '<div class="srctags"><span class="tiny dim">出典:</span>' + tags.map(function (t) { return '<span class="chip">' + esc(t) + "</span>"; }).join("") + "</div>";
     if (card.pg) html += '<p class="small dim" style="margin-top:10px">テキスト該当ページ: <span class="b" style="color:var(--ink)">' + esc(card.pg) + "</span></p>";
     var pdfNo = function (s) { var m = String(s || "").match(/PDF p\.(\d+)/); return m ? m[1] : null; };
     if (de && de.textPage && pdfNo(de.textPage) !== pdfNo(card.pg)) html += '<p class="small dim" style="margin-top:2px">論点辞書: <span class="b" style="color:var(--ink)">' + esc(de.textPage) + "</span></p>";
     html += figureHtml(fig, "テキストの図で確認");
     if (de) html += '<button type="button" class="bigbtn ghost" id="btn-dict-open">この論点の辞書を開く</button>';
+    html += '<div style="margin-top:16px;border-top:1px dashed var(--border);padding-top:12px">' +
+      '<label for="memo-input" class="tiny dim b">自分のメモ（このカードだけに残ります）</label>' +
+      '<div style="display:flex;gap:8px;margin-top:6px;align-items:center"><input type="text" class="memoinput" id="memo-input" maxlength="120" placeholder="間違えた理由や覚え方を1行で" value="' + esc(cardMemo(card.id)) + '">' +
+      '<button type="button" class="smallbtn accent" id="btn-memo-save" style="flex:none">保存</button></div></div>';
+    html += '<button type="button" class="smallbtn" id="btn-report" style="margin-top:12px">' + (isReported(card.id) ? "問題の誤りを報告済み（タップで取り消し）" : "問題の誤りを報告") + "</button>";
     html += "</div>";
   }
   html += "</article>";
 
   /* controls */
-  html += '<div id="controls">';
+  html += '<div id="controls"' + (S.revealed && !isExam ? ' class="floatbar"' : "") + ">";
   if (isExam) {
     html += '<div class="choices">' + info.choices.map(function (choice, i) {
       var label = CHOICE_LABELS[i];
@@ -2459,6 +2994,24 @@ function renderSession() {
   if (bf) bf.addEventListener("click", function () { S.figOpen = !S.figOpen; renderSession(); });
   var bdo = document.getElementById("btn-dict-open");
   if (bdo) bdo.addEventListener("click", function () { openDictFromSession(de); });
+  var bms = document.getElementById("btn-memo-save");
+  if (bms) bms.addEventListener("click", function () {
+    var v = (document.getElementById("memo-input").value || "").trim();
+    var memos = ensureExtras().memos;
+    if (v) memos[String(card.id)] = v; else delete memos[String(card.id)];
+    persistLocal();
+    toast(v ? "メモを保存しました" : "メモを消しました");
+  });
+  var brp = document.getElementById("btn-report");
+  if (brp) brp.addEventListener("click", function () {
+    var reps = ensureExtras().reports;
+    var ix = -1;
+    for (var ri = 0; ri < reps.length; ri++) if (String(reps[ri].id) === String(card.id)) ix = ri;
+    if (ix >= 0) { reps.splice(ix, 1); toast("報告を取り消しました"); }
+    else { reps.push({ id: card.id, at: new Date().toISOString() }); toast("問題の誤りを報告しました。進捗・設定からまとめてコピーできます"); }
+    persistLocal();
+    renderSession();
+  });
 
   if (isExam) {
     var eb = document.querySelectorAll("[data-exam]");
@@ -2549,6 +3102,20 @@ function renderDone() {
     html += '<div style="display:flex;gap:10px;margin-top:10px"><button type="button" class="bigbtn ghost" id="btn-again" style="margin-top:0">もう一周</button>' +
       '<button type="button" class="bigbtn" id="btn-home" style="margin-top:0">ホームに戻る</button></div>';
   }
+  if (S.spec.chapterTest) {
+    var ctTot = (S.tally.known || 0) + (S.tally.shaky || 0) + (S.tally.missed || 0);
+    var ctRate = ctTot ? Math.round(S.tally.known / ctTot * 100) : 0;
+    var ctPass = ctTot > 0 && S.tally.known / ctTot >= 0.8;
+    html += '<div class="notice ' + (ctPass ? "okbox" : "warnbox") + '" style="text-align:left">章テスト結果: 正答率 <strong>' + ctRate + '%</strong>（合格ライン80%）— ' +
+      (ctPass ? "合格です。この章のバッジを進捗タブに付けました。" : "あと少しで合格ラインです。苦手な論点から解き直してみてください。") + "</div>";
+  }
+  if (S.spec.todayTask && !isExam) {
+    html += '<div class="notice okbox" style="text-align:left">今日のタスクを完走しました。連続学習は <strong>' + currentStreak() + "日</strong>に更新されています。</div>";
+  }
+  if (S.spec.weeklyTest) {
+    var wtTot = (S.tally.known || 0) + (S.tally.missed || 0);
+    html += '<div class="notice okbox" style="text-align:left">週次総合テスト: ' + S.cards.length + "問中 " + S.tally.known + "問正解（正答率" + (wtTot ? Math.round(S.tally.known / wtTot * 100) : 0) + '%）でした。</div>';
+  }
   html += "</section>";
   if (isExam) {
     html += '<section class="glass card"><h2 style="font-size:16px">答え合わせ</h2>';
@@ -2559,7 +3126,7 @@ function renderDone() {
       html += '<div class="rowline"><span class="grow"><span class="ttl" style="white-space:normal">' + esc(c.q) + "</span>" +
         '<span class="meta" style="display:block">' + esc(c.ch) + " ・ " + esc(baseTopic(c.tp)) + "</span>" +
         '<span class="meta" style="display:block">正解: ' + esc(info.answer) + " " + esc(info.correctText) + (pick && pick.picked ? " ／ あなたの回答: " + esc(pick.picked) : " ／ スキップ") + "</span>" +
-        '<span class="meta" style="display:block">' + esc(c.ex) + "</span></span>" +
+        '<span class="meta" style="display:block">' + hlExpl(c.ex, c) + "</span></span>" +
         (pick && pick.picked == null ? '<span class="tag">スキップ</span>' : ok ? '<span class="tag good">正解</span>' : '<span class="tag bad">不正解</span>') + "</div>";
     });
     if (weakIds.length) html += '<button type="button" class="bigbtn" id="btn-retry-weak" style="margin-bottom:10px">間違えた問題だけ解き直す（' + weakIds.length + "問）</button>";
@@ -2574,7 +3141,7 @@ function renderDone() {
   var ba = document.getElementById("btn-again");
   if (ba) ba.addEventListener("click", function () {
     var spec = S.spec;
-    startSession({ mode: spec.mode, chapter: spec.chapter, topic: spec.topic, format: spec.format, rank: spec.rank, deck: spec.deck, order: spec.order === "random" ? "random" : "sequential", exam: spec.exam, cardIds: spec.cardIds, label: spec.label });
+    startSession({ mode: spec.mode, chapter: spec.chapter, topic: spec.topic, format: spec.format, rank: spec.rank, deck: spec.deck, order: spec.order === "random" ? "random" : "sequential", exam: spec.exam, cardIds: spec.cardIds, label: spec.label, chapterTest: spec.chapterTest, todayTask: spec.todayTask, weeklyTest: spec.weeklyTest, timeLimitSec: spec.timeLimitSec });
   });
   var bw = document.getElementById("btn-retry-weak");
   if (bw) bw.addEventListener("click", function () {
@@ -2780,6 +3347,7 @@ function bootLoad() {
 function boot() {
   if (!DATA) { appEl().innerHTML = '<div class="boot">問題データを読み込めませんでした。通信環境を確認して開き直してください。</div>'; return; }
   loadLocal(); /* first: setSession() inside consumeAuthRedirect persists, and must not clobber stored settings/resumes */
+  applyDisplayMode();
   var fromMail = consumeAuthRedirect();
   if (fromMail && auth.accessToken) {
     appEl().innerHTML = '<div class="boot">メール確認の結果を読み込んでいます…</div>';

@@ -868,9 +868,11 @@ function interleaveByChapter(list) {
 }
 function buildTodayPlan(deckSel) {
   var now = Date.now();
-  var target = Math.min(20, Math.max(1, Math.round((state.settings.dailyMinutes || 15) / 1.5)));
-  var theory = CARDS.filter(function (c) { return c.d === "kiso" || c.d === "jissen"; });
-  var duePool = deckSel === "keisan" ? scopeCards("keisan") : theory;
+  var target = Math.min(20, Math.max(5, Math.round((state.settings.dailyMinutes || 15) / 1.5)));
+  /* Due cards are gathered across decks (only a keisan selection scopes
+     them to keisan alone), matching the internal app's plan builder:
+     a deadline must not be dropped just because of the deck filter. */
+  var duePool = deckSel === "keisan" ? scopeCards("keisan") : CARDS;
   var mainPool = deckSel === "all" ? CARDS : scopeCards(deckSel);
   var picked = [], used = {};
   function take(list, cap) {
@@ -880,9 +882,12 @@ function buildTodayPlan(deckSel) {
     }
   }
   var due = duePool.filter(function (c) { return isDue(c, now); }).sort(function (a, b) { return (prog(a.id).nr || 0) - (prog(b.id).nr || 0); });
-  take(due, Math.ceil(target / 2));
+  take(due, Math.max(1, Math.floor(target / 2)));
   var nDue = picked.length;
-  var weak = mainPool.filter(function (c) { return !used[c.id] && isWeak(c) && !isDue(c, now); });
+  /* Due cards past the half cap stay eligible here (as in the internal
+     app): a missed/shaky card whose deadline has come is still weak, and
+     must not be crowded out by fresh cards. */
+  var weak = mainPool.filter(function (c) { return !used[c.id] && isWeak(c); });
   weak.sort(function (a, b) { return (prog(b.id).ls || 0) - (prog(a.id).ls || 0); });
   take(weak, target);
   var nWeak = picked.length - nDue;
@@ -891,17 +896,23 @@ function buildTodayPlan(deckSel) {
   take(interleaveByChapter(freshAB), target);
   take(interleaveByChapter(freshC), target);
   var nFresh = picked.length - nDue - nWeak;
-  var review = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && p && p.a > 0 && !p.m && !isDue(c, now) && !isWeak(c); });
+  var review = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && p && p.a > 0 && !p.m; });
   review.sort(function (a, b) { return (prog(a.id).nr || Infinity) - (prog(b.id).nr || Infinity); });
   take(review, target);
   var nReview = picked.length - nDue - nWeak - nFresh;
+  /* If due cards alone exceed the half cap, fill whatever room is left
+     with them before finishing (same rule as the internal app), so the
+     plan never comes back short while deadlines are still waiting. */
+  var beforeBackfill = picked.length;
+  take(due, target);
+  var nDueTotal = nDue + (picked.length - beforeBackfill);
   var duePart = picked.slice(0, nDue), rest = interleaveByChapter(picked.slice(nDue));
-  return { items: duePart.concat(rest), target: target, breakdown: { due: nDue, weak: nWeak, fresh: nFresh, review: nReview } };
+  return { items: duePart.concat(rest), target: target, breakdown: { due: nDueTotal, weak: nWeak, fresh: nFresh, review: nReview } };
 }
 /* ---------------- view state ---------------- */
 var view = { tab: "home" }; /* home | topics | topic | dict | progress | session | done */
 var homeDeck = "all", homeOrder = "sequential", homeRank = "all";
-var topicChapter = null, dictQuery = "", dictResults = null;
+var topicChapter = null, dictQuery = "", dictResults = null, dictDraft = "";
 var appEl = function () { return document.getElementById("app"); };
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]; }); }
 var toastTimer = null;
@@ -1308,9 +1319,17 @@ function dictCardHtml(e) {
   return h + "</section>";
 }
 function renderDict() {
+  /* A background sync finishing calls render() on this tab too. Capture the
+     search box's focus and caret first so the re-render can hand them back:
+     without this, on a slow or flaky connection the typed keyword vanished
+     (and the keyboard closed) before the user could ever press 検索. */
+  var prevInput = document.getElementById("search-input");
+  var hadFocus = !!(prevInput && document.activeElement === prevInput);
+  var caret = null;
+  if (hadFocus) { try { caret = prevInput.selectionStart; } catch (e) {} }
   var html = '<div class="wrap rise"><h1 class="page serif">論点辞書・検索</h1>' +
     '<p class="sub">論点名・キーワード・問題文から探せます。全155論点（理論135・計算20）の要点を収録しています。</p>' +
-    '<form id="search-form" style="display:flex;gap:8px"><input class="searchbox" style="flex:1" id="search-input" type="search" placeholder="例: 継続性、引当金、正味売却価額…" value="' + esc(dictQuery) + '" aria-label="検索キーワード"><button type="submit" class="minibtn" style="padding:0 20px;font-size:15px">検索</button></form><div id="dict-body">';
+    '<form id="search-form" style="display:flex;gap:8px"><input class="searchbox" style="flex:1" id="search-input" type="search" placeholder="例: 継続性、引当金、正味売却価額…" value="' + esc(dictDraft) + '" aria-label="検索キーワード"><button type="submit" class="minibtn" style="padding:0 20px;font-size:15px">検索</button></form><div id="dict-body">';
   if (dictResults) {
     var tps = dictResults.topics, cds = dictResults.cards;
     html += '<p class="small dim" style="margin:14px 2px 0">「' + esc(dictQuery) + "」の結果 — 論点 " + (dictResults.tTotal != null ? dictResults.tTotal : tps.length) + "件 ・ 問題 " + (dictResults.cTotal != null ? dictResults.cTotal : cds.length) + "件" +
@@ -1336,9 +1355,19 @@ function renderDict() {
   html += "</div></div>" + tabbarHtml("dict");
   appEl().innerHTML = html;
   bindTabs();
+  /* Keep the unsubmitted keyword in a draft on every keystroke (the same
+     pattern the login form uses with authDraft), and give the focus back
+     after a background re-render so typing can simply continue. */
+  var searchInput = document.getElementById("search-input");
+  searchInput.addEventListener("input", function () { dictDraft = searchInput.value; });
+  if (hadFocus) {
+    searchInput.focus();
+    if (caret != null) { try { searchInput.setSelectionRange(caret, caret); } catch (e) {} }
+  }
   document.getElementById("search-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var q = document.getElementById("search-input").value.trim();
+    dictDraft = q;
     dictQuery = q;
     if (!q) { dictResults = null; renderDict(); return; }
     var ql = q.toLowerCase();

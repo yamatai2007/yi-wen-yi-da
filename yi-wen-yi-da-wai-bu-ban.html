@@ -340,7 +340,37 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .badgecell{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; background:var(--fill); color:var(--faint); border:1px solid var(--border); }
   .badgecell.earned{ background:rgba(232,169,12,.16); color:var(--warn); border-color:rgba(232,169,12,.45); }
 
-  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .tabpill{ transition:none; } }
+  /* ---------- dictionary bottom sheet (解説の上に重ねる辞書) ----------
+     Opened from the answer box's 「この論点の辞書を開く」: the sheet
+     slides up over the live session instead of navigating away, so the
+     drill underneath (same card, answer still revealed, timer still
+     running) is exactly as it was when the sheet closes. Sits below
+     the figure viewer (z 120) so a figure tapped inside the sheet can
+     still zoom fullscreen above it. */
+  .dictsheet-root{ position:fixed; inset:0; z-index:110; }
+  .dictsheet-root[hidden]{ display:none; }
+  .dictsheet-backdrop{ position:absolute; inset:0; background:rgba(8,10,20,.46); opacity:0; transition:opacity .32s ease; }
+  .dictsheet-root.open .dictsheet-backdrop{ opacity:1; }
+  .dictsheet-panel{
+    position:absolute; left:50%; bottom:0; width:min(680px, 100%);
+    max-height:88dvh; display:flex; flex-direction:column;
+    background:var(--glass-strong); border:1px solid var(--border); border-bottom:0;
+    border-radius:24px 24px 0 0; box-shadow:0 -14px 44px rgba(10,14,40,.28);
+    backdrop-filter:blur(24px) saturate(1.7); -webkit-backdrop-filter:blur(24px) saturate(1.7);
+    transform:translate(-50%, 103%); transition:transform .38s cubic-bezier(.22,1,.36,1);
+  }
+  .dictsheet-root.open .dictsheet-panel{ transform:translate(-50%, 0); }
+  .dictsheet-grab{ flex:none; padding:9px 0 3px; display:flex; justify-content:center; touch-action:none; cursor:grab; }
+  .dictsheet-grab span{ width:40px; height:5px; border-radius:99px; background:var(--fill2); display:block; }
+  .dictsheet-head{ flex:none; display:flex; align-items:flex-start; gap:10px; padding:6px 18px 10px; touch-action:none; cursor:grab; }
+  .dictsheet-head .grow{ flex:1; min-width:0; }
+  .dictsheet-title{ font-size:17.5px; font-weight:800; line-height:1.4; margin-top:1px; }
+  .dictsheet-close{ flex:none; width:36px; height:36px; border-radius:50%; background:var(--fill); color:var(--dim); font-size:19px; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .dictsheet-body{ overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:2px 20px 14px; }
+  .dictsheet-foot{ flex:none; padding:10px 18px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
+  .dictsheet-foot .bigbtn{ margin-top:0; }
+
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .tabpill{ transition:none; } .dictsheet-panel, .dictsheet-backdrop{ transition:none; } }
 </style>
 </head>
 <body>
@@ -350,6 +380,18 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   <div class="figv-bar"><span class="figv-cap" id="figv-cap"></span><button type="button" class="figv-close" id="figv-close" aria-label="閉じる">×</button></div>
   <div class="figv-stage" id="figv-stage"><img id="figv-img" alt=""></div>
   <div class="figv-hint">タップで閉じる ／ ピンチで拡大・縮小 ／ ドラッグで移動 ／ ダブルタップで等倍⇔拡大</div>
+</div>
+<div class="dictsheet-root" id="dictsheet" hidden role="dialog" aria-modal="true" aria-label="論点辞書">
+  <div class="dictsheet-backdrop" id="dictsheet-backdrop"></div>
+  <div class="dictsheet-panel" id="dictsheet-panel">
+    <div class="dictsheet-grab" id="dictsheet-grab" aria-hidden="true"><span></span></div>
+    <div class="dictsheet-head" id="dictsheet-head">
+      <div class="grow"><div class="tiny dim" id="dictsheet-chapter"></div><div class="dictsheet-title" id="dictsheet-title"></div></div>
+      <button type="button" class="dictsheet-close" id="dictsheet-close" aria-label="辞書を閉じて問題に戻る">×</button>
+    </div>
+    <div class="dictsheet-body" id="dictsheet-body"></div>
+    <div class="dictsheet-foot"><button type="button" class="bigbtn" id="dictsheet-return">問題に戻る</button></div>
+  </div>
 </div>
 
 <script>
@@ -1396,7 +1438,9 @@ function openFigViewer(img) {
 }
 function closeFigViewer() {
   document.getElementById("figviewer").hidden = true;
-  document.body.style.overflow = "";
+  /* If the figure was opened from inside the dictionary sheet, the
+     sheet is still up underneath: keep the page scroll-locked for it. */
+  document.body.style.overflow = dictSheetOpen ? "hidden" : "";
 }
 document.addEventListener("click", function (e) {
   var t = e.target;
@@ -1469,6 +1513,139 @@ document.addEventListener("click", function (e) {
     if (figv.scale > 1) figvReset();
     else { figv.scale = 2.8; figvApply(); }
   });
+})();
+/* ---------------- dictionary bottom sheet (解説の上に重ねる辞書) ----------------
+   「この論点の辞書を開く」 opens the topic's dictionary entry as a
+   sheet over the live session instead of navigating to the topic
+   page: the session object, the rendered question and the timer are
+   all left untouched underneath, so closing the sheet (✕, backdrop
+   tap, swipe-down, or 問題に戻る) drops the learner straight back
+   onto the same card with its answer still revealed. The session is
+   never parked or treated as an exit — there is no resume step. */
+var dictSheetOpen = false;
+var dictSheetCloseTimer = null;
+var dictSheetReturnFocus = null;
+function dictSheetEls() {
+  return {
+    root: document.getElementById("dictsheet"),
+    panel: document.getElementById("dictsheet-panel"),
+    backdrop: document.getElementById("dictsheet-backdrop"),
+    body: document.getElementById("dictsheet-body")
+  };
+}
+function openDictSheet(entry, fig) {
+  if (!entry) return;
+  var els = dictSheetEls();
+  if (!els.root) return;
+  if (dictSheetCloseTimer) { clearTimeout(dictSheetCloseTimer); dictSheetCloseTimer = null; }
+  if (!fig) fig = FIGS[entry.chapter + "::" + entry.topic] || null;
+  document.getElementById("dictsheet-chapter").textContent = chapterLabel(entry.chapter);
+  document.getElementById("dictsheet-title").textContent = entry.topic;
+  els.body.innerHTML =
+    '<div class="chips" style="margin-top:2px">' +
+    '<span class="chip">ランク' + esc(entry.rank) + "</span>" +
+    (entry.textPage ? '<span class="chip">テキスト ' + esc(entry.textPage) + "</span>" : "") + "</div>" +
+    '<p class="dictsum">' + esc(entry.summary) + "</p>" +
+    '<div style="margin-top:10px">' + (entry.keywords || []).map(function (k) { return '<span class="kw">' + esc(k) + "</span>"; }).join("") + "</div>" +
+    figureHtml(fig, "テキストの図で確認");
+  els.body.scrollTop = 0;
+  dictSheetReturnFocus = document.activeElement;
+  els.root.hidden = false;
+  dictSheetOpen = true;
+  document.body.style.overflow = "hidden";
+  void els.root.offsetWidth; /* lay out at the off-screen position first, so adding .open animates the slide-up */
+  els.root.classList.add("open");
+  var closeBtn = document.getElementById("dictsheet-close");
+  if (closeBtn) { try { closeBtn.focus({ preventScroll: true }); } catch (e) { closeBtn.focus(); } }
+}
+function closeDictSheet() {
+  if (!dictSheetOpen) return;
+  dictSheetOpen = false;
+  var els = dictSheetEls();
+  els.root.classList.remove("open");
+  els.panel.style.transition = ""; els.panel.style.transform = "";
+  els.backdrop.style.opacity = "";
+  var finish = function () {
+    dictSheetCloseTimer = null;
+    els.root.hidden = true;
+    var fv = document.getElementById("figviewer");
+    if (!fv || fv.hidden) document.body.style.overflow = "";
+  };
+  if (reducedMotion()) finish();
+  else dictSheetCloseTimer = setTimeout(finish, 340);
+  if (dictSheetReturnFocus && document.contains(dictSheetReturnFocus)) {
+    try { dictSheetReturnFocus.focus({ preventScroll: true }); } catch (e) {}
+  }
+  dictSheetReturnFocus = null;
+}
+/* Swipe-down to close: dragging the grab bar / header follows the
+   finger, and a downward pull from the top of the sheet body does
+   the same. Past ~90px the sheet closes; otherwise it snaps back. */
+var dsDrag = null;
+function dsDragApply(dy) {
+  var els = dictSheetEls();
+  els.panel.style.transition = "none";
+  els.panel.style.transform = "translate(-50%, " + dy + "px)";
+  els.backdrop.style.opacity = String(Math.max(0, 1 - dy / 420));
+}
+function dsDragFinish() {
+  var wasEngaged = !!(dsDrag && dsDrag.engaged);
+  var dy = dsDrag ? dsDrag.dy : 0;
+  dsDrag = null;
+  if (wasEngaged && dy > 90) { closeDictSheet(); return; }
+  var els = dictSheetEls();
+  els.panel.style.transition = ""; els.panel.style.transform = "";
+  els.backdrop.style.opacity = "";
+}
+(function initDictSheet() {
+  var root = document.getElementById("dictsheet");
+  if (!root) return;
+  var body = document.getElementById("dictsheet-body");
+  document.getElementById("dictsheet-backdrop").addEventListener("click", closeDictSheet);
+  document.getElementById("dictsheet-close").addEventListener("click", closeDictSheet);
+  document.getElementById("dictsheet-return").addEventListener("click", closeDictSheet);
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape" || !dictSheetOpen) return;
+    var fv = document.getElementById("figviewer");
+    if (fv && !fv.hidden) return; /* the figure viewer sits above the sheet and closes first */
+    closeDictSheet();
+  });
+  [document.getElementById("dictsheet-grab"), document.getElementById("dictsheet-head")].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener("pointerdown", function (e) {
+      if (e.target.closest && e.target.closest("button")) return;
+      if (e.button != null && e.button > 0) return;
+      dsDrag = { id: e.pointerId, y: e.clientY, dy: 0, engaged: true };
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    el.addEventListener("pointermove", function (e) {
+      if (!dsDrag || dsDrag.id !== e.pointerId || !dsDrag.engaged) return;
+      dsDrag.dy = Math.max(0, e.clientY - dsDrag.y);
+      dsDragApply(dsDrag.dy);
+    });
+    el.addEventListener("pointerup", function (e) { if (dsDrag && dsDrag.id === e.pointerId) dsDragFinish(); });
+    el.addEventListener("pointercancel", function (e) { if (dsDrag && dsDrag.id === e.pointerId) dsDragFinish(); });
+  });
+  body.addEventListener("touchstart", function (e) {
+    if (e.touches.length !== 1) { dsDrag = null; return; }
+    dsDrag = { id: null, y: e.touches[0].clientY, x: e.touches[0].clientX, dy: 0, engaged: false, fromTop: body.scrollTop <= 0 };
+  }, { passive: true });
+  body.addEventListener("touchmove", function (e) {
+    if (!dsDrag || !dsDrag.fromTop) return;
+    var t = e.touches[0];
+    var dy = t.clientY - dsDrag.y, dx = t.clientX - dsDrag.x;
+    if (!dsDrag.engaged) {
+      if (dy > 10 && dy > Math.abs(dx) * 1.25) dsDrag.engaged = true;
+      else { if (dy < -6 || Math.abs(dx) > 12) dsDrag = null; return; }
+    }
+    if (dsDrag.engaged) {
+      e.preventDefault();
+      dsDrag.dy = Math.max(0, dy);
+      dsDragApply(dsDrag.dy);
+    }
+  }, { passive: false });
+  body.addEventListener("touchend", function () { if (dsDrag) dsDragFinish(); });
+  body.addEventListener("touchcancel", function () { if (dsDrag) dsDragFinish(); });
 })();
 /* ---------------- tab pill + swipe tab switching ----------------
    Horizontal swipe switches between the four main tabs, Muse-app
@@ -2644,7 +2821,7 @@ function startSession(spec) {
   S = {
     spec: spec, key: key, cards: cards, idx: idx, elapsed: elapsed, tally: tally, history: history,
     examPicks: examPicks, orders: orders, revealed: false, picked: null, pickedChoice: null,
-    confidence: null, causeFor: null, paused: false, lastFlush: elapsed, figOpen: false, done: false, kwChecked: {},
+    confidence: null, causeFor: null, paused: false, lastFlush: elapsed, figOpen: false, choicesOpen: false, done: false, kwChecked: {},
     returnView: returnView, returnScroll: returnScroll
   };
   cards.forEach(function (c) {
@@ -2737,7 +2914,7 @@ function advance(grade, opts) {
   S.tally[grade] = (S.tally[grade] || 0) + 1;
   S.history.push({ id: card.id, grade: grade });
   S.idx += 1;
-  S.revealed = false; S.picked = null; S.pickedChoice = null; S.confidence = null; S.causeFor = null; S.figOpen = false; S.kwChecked = {};
+  S.revealed = false; S.picked = null; S.pickedChoice = null; S.confidence = null; S.causeFor = null; S.figOpen = false; S.choicesOpen = false; S.kwChecked = {};
   persistSnapshot();
   if (S.idx >= S.cards.length) finishSession(); else { queueSlide(1); renderSession(); window.scrollTo(0, 0); }
 }
@@ -2795,23 +2972,14 @@ function exitSession() {
   window.scrollTo(0, rs);
   toast("中断しました。ここまでの進捗は保存済みで、ホームの「続きから再開」から続けられます");
 }
-/* 「この論点の辞書を開く」(answer box): park the session exactly like ✕
-   does — study time flushed, snapshot saved, resumable from home — then
-   jump straight to that topic's dictionary page. The answer itself is
-   NOT recorded yet at this point (grading happens on 次へ), so leaving
-   here loses nothing: the same card comes up first on resume. */
-function openDictFromSession(entry) {
-  if (!entry) return;
-  flushStudyTime();
-  persistSnapshot();
-  stopTimer();
-  releaseWakeLock();
-  S = null;
-  topicChapter = entry.chapter;
-  view = { tab: "topic", chapter: entry.chapter, topic: entry.topic };
-  render();
-  window.scrollTo(0, 0);
-  toast("ドリルは中断しました。ホームの「続きから再開」から続けられます");
+/* 「この論点の辞書を開く」(answer box): show the topic's dictionary
+   entry as a bottom sheet over this session (see openDictSheet above).
+   The session is NOT parked or exited — S, the timer and the rendered
+   card stay exactly as they are underneath the sheet, so closing it
+   returns to the same question with the answer still revealed, with
+   no resume step. */
+function openDictFromSession(entry, fig) {
+  openDictSheet(entry, fig);
 }
 
 function causePanelHtml(overconfident) {
@@ -2903,6 +3071,22 @@ function renderSession() {
     } else if (isChoice) {
       html += '<p class="verdict ' + (mcqCorrect ? "ok" : "ng") + '">' + (mcqCorrect ? "正解！" : "不正解 — 正しくは「" + esc(info.answer) + "」") + "</p>";
       if (info.correctText) html += '<p style="margin-top:8px;line-height:1.75">' + esc(info.correctText) + "</p>";
+      /* The full choice list stays out of the answer box by default —
+         it only appears while 「選択肢を見る」 is open, marked with
+         which one was correct and which one the learner picked. */
+      html += '<button type="button" class="figtoggle" id="btn-choices" aria-expanded="' + (S.choicesOpen ? "true" : "false") + '">' + (S.choicesOpen ? "選択肢を閉じる" : "選択肢を見る") + "</button>";
+      if (S.choicesOpen) {
+        html += '<div class="choices" style="margin-top:12px">' + info.choices.map(function (choice, i) {
+          var label = CHOICE_LABELS[i];
+          var isRight = label === info.answer;
+          var isMine = label === S.pickedChoice;
+          var marks = "";
+          if (isRight) marks += '<span class="tag good">正解</span>';
+          if (isMine) marks += '<span class="tag ' + (isRight ? "good" : "bad") + '">あなたの回答</span>';
+          return '<div class="choice' + (isRight ? " right" : isMine ? " wrong" : "") + '"><span class="lab">' + label + '</span><span style="flex:1;min-width:0">' + esc(choice) +
+            (marks ? '<span style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">' + marks + "</span>" : "") + "</span></div>";
+        }).join("") + "</div>";
+      }
     } else {
       html += '<p class="tiny dim b">答え</p><p style="margin-top:6px;line-height:1.8;font-weight:600">' + esc(card.a) + "</p>";
     }
@@ -2993,7 +3177,9 @@ function renderSession() {
   var bf = document.getElementById("btn-fig");
   if (bf) bf.addEventListener("click", function () { S.figOpen = !S.figOpen; renderSession(); });
   var bdo = document.getElementById("btn-dict-open");
-  if (bdo) bdo.addEventListener("click", function () { openDictFromSession(de); });
+  if (bdo) bdo.addEventListener("click", function () { openDictFromSession(de, fig); });
+  var bcv = document.getElementById("btn-choices");
+  if (bcv) bcv.addEventListener("click", function () { S.choicesOpen = !S.choicesOpen; renderSession(); });
   var bms = document.getElementById("btn-memo-save");
   if (bms) bms.addEventListener("click", function () {
     var v = (document.getElementById("memo-input").value || "").trim();

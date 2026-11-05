@@ -1596,10 +1596,25 @@ function startSession(spec) {
     key = resumeKeyFor(spec);
     if (!cards.length) { toast("対象の問題がありません"); return; }
   }
+  /* Remember where the session was launched from (and how far that screen
+     was scrolled) so ✕ can return there instead of always dumping the user
+     back on home — e.g. a topic drill opened from search results should go
+     back to those results. Restarting from the done screen (もう一周 /
+     解き直す) inherits the finished session's origin. */
+  var returnView = null, returnScroll = 0;
+  if (view.tab !== "session" && view.tab !== "done") {
+    returnView = {};
+    for (var rvk in view) returnView[rvk] = view[rvk];
+    returnScroll = window.pageYOffset || 0;
+  } else if (S && S.returnView) {
+    returnView = S.returnView;
+    returnScroll = S.returnScroll || 0;
+  }
   S = {
     spec: spec, key: key, cards: cards, idx: idx, elapsed: elapsed, tally: tally, history: history,
     examPicks: examPicks, orders: orders, revealed: false, picked: null, pickedChoice: null,
-    confidence: null, causeFor: null, paused: false, lastFlush: elapsed, figOpen: false, done: false
+    confidence: null, causeFor: null, paused: false, lastFlush: elapsed, figOpen: false, done: false,
+    returnView: returnView, returnScroll: returnScroll
   };
   cards.forEach(function (c) {
     if ((c.f === "mcq" || c.f === "proc") && c.cs && c.cs.length > 1 && !S.orders[c.id]) {
@@ -1707,10 +1722,15 @@ function exitSession() {
   flushStudyTime();
   persistSnapshot();
   stopTimer();
+  /* Go back to the screen the session was started from (search results, a
+     topic page, …), restoring its scroll position; home only when the
+     session was started there or the origin is unknown. */
+  var rv = (S && S.returnView && S.returnView.tab !== "session" && S.returnView.tab !== "done") ? S.returnView : { tab: "home" };
+  var rs = (S && S.returnScroll) || 0;
   S = null;
-  view = { tab: "home" };
+  view = rv;
   render();
-  window.scrollTo(0, 0);
+  window.scrollTo(0, rs);
   toast("中断しました。ここまでの進捗は保存済みで、ホームの「続きから再開」から続けられます");
 }
 
@@ -1750,7 +1770,7 @@ function renderSession() {
   var de = dictEntryFor(card);
 
   var html = '<div class="wrap rise" style="padding-bottom:40px">';
-  html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-exit" aria-label="中断してホームに戻る（続きから再開できます)">✕</button>' +
+  html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-exit" aria-label="' + (S.returnView && S.returnView.tab !== "home" ? "中断して元の画面に戻る（続きから再開できます)" : "中断してホームに戻る（続きから再開できます)") + '">✕</button>' +
     (S.spec.rank ? '<span class="tag a">' + (S.spec.rank === "AB" ? "ランクA・Bのみ" : "ランク" + esc(S.spec.rank) + "のみ") + "</span>" : "") +
     '<div class="bar" style="flex:1"><i style="width:' + Math.round(S.idx / S.cards.length * 100) + '%"></i></div>' +
     '<span class="small dim b tnum">' + (S.idx + 1) + " / " + S.cards.length + "</span></div>";

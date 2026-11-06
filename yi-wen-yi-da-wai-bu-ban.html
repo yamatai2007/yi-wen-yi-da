@@ -49,28 +49,30 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
     --shadow-pop:0 2px 6px rgba(35,45,80,.08), 0 16px 40px rgba(35,45,80,.14);
     --hm1:rgba(109,132,214,.2); --hm2:rgba(109,132,214,.42); --hm3:rgba(109,132,214,.66); --hm4:#6d84d6;
     --p-blue:#7ea6d8; --p-lav:#a493d8; --p-mint:#7fbfa8; --p-rose:#dfa3b8; --p-sand:#dbba84; --p-sky:#8fc3dd;
+    --t-review:rgba(110,180,150,.13); --t-weak:rgba(216,178,116,.15); --t-focus:rgba(164,147,216,.13); --t-random:rgba(127,178,214,.13);
   }
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#131419;
-      --wash:linear-gradient(158deg,#181c26 0%,#15161f 42%,#1a1724 72%,#131a17 100%);
+      --wash:linear-gradient(158deg,#1d2639 0%,#1a1a30 42%,#261c38 72%,#152720 100%);
       --surface:rgba(39,41,51,.62); --surface-alt:rgba(29,30,39,.62); --elev:rgba(35,36,45,.96);
       --ink:#f2f2f5; --dim:#a9a9b2; --faint:#71717c;
       --hair:rgba(255,255,255,.09); --border:rgba(255,255,255,.09);
       --fill:rgba(160,170,200,.09); --fill2:rgba(160,170,200,.15);
       --glass:rgba(39,41,51,.5); --glass-strong:rgba(46,47,58,.85);
       --accent:#2997ff; --btn:#0071e3;
-      --accent2:#ff6961; --good:#30d158; --warn:#ff9f0a;
-      --accent-soft:rgba(41,151,255,.14); --accent2-soft:rgba(255,105,97,.12);
-      --good-soft:rgba(48,209,88,.12); --warn-soft:rgba(255,159,10,.13);
+      --accent2:#ff8a80; --good:#30d158; --warn:#ff9f0a;
+      --accent-soft:rgba(41,151,255,.2); --accent2-soft:rgba(255,69,58,.26);
+      --good-soft:rgba(48,209,88,.18); --warn-soft:rgba(255,159,10,.2);
       --fill-bad:#d70015; --fill-good:#157a35; --fill-warn:#a34a00;
       --seg-track:rgba(160,170,200,.12); --seg-sel:#55565f; --tabpill:#3b3c47;
       --tabbar:rgba(23,24,30,.72);
       --chrome:rgba(27,28,35,.82);
       --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.32), 0 28px 56px rgba(0,0,0,.26);
       --shadow-pop:0 2px 6px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.5);
-      --hm1:rgba(126,146,224,.22); --hm2:rgba(126,146,224,.45); --hm3:rgba(126,146,224,.68); --hm4:#7e92e0;
-      --p-blue:#8fb0dd; --p-lav:#b3a3e0; --p-mint:#8fcbb2; --p-rose:#e3aec2; --p-sand:#e0c48f; --p-sky:#9cc9e0;
+      --hm1:rgba(110,132,235,.24); --hm2:rgba(110,132,235,.48); --hm3:rgba(110,132,235,.7); --hm4:#6e86ea;
+      --p-blue:#7ea9ec; --p-lav:#ab8ff7; --p-mint:#5fd3a5; --p-rose:#f09bbd; --p-sand:#f2bc5e; --p-sky:#74c0e8;
+      --t-review:rgba(48,209,88,.22); --t-weak:rgba(255,176,66,.26); --t-focus:rgba(168,140,255,.26); --t-random:rgba(64,156,255,.24);
     }
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -149,15 +151,17 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .modebtn.focus{ display:block; width:100%; margin-top:10px; background:var(--fill); color:var(--ink); }
   section.card:nth-of-type(even) .modebtn.focus{ background:var(--fill2); }
   .modebtn.focus small{ color:var(--dim); }
-  /* Faint pastel tints per function (iCloud app colors, kept whisper-
-     quiet): review = mint, weak = sand, focus = lavender, random = sky.
-     本番形式 keeps its rose-soft exam tint above. */
-  #btn-review{ background:rgba(110,180,150,.13); }
-  #btn-weak{ background:rgba(216,178,116,.15); }
-  #btn-focus{ background:rgba(164,147,216,.13); }
-  section.card:nth-of-type(even) #btn-focus{ background:rgba(164,147,216,.13); }
-  #btn-random{ background:rgba(127,178,214,.13); }
-  section.card:nth-of-type(even) #btn-random{ background:rgba(127,178,214,.13); }
+  /* Pastel tints per function (iCloud app colors): review = mint,
+     weak = sand, focus = lavender, random = sky. Whisper-quiet in
+     light; the dark tokens raise saturation and opacity so the hues
+     stand as colors instead of sinking into the gray. 本番形式 keeps
+     its rose-soft exam tint above. */
+  #btn-review{ background:var(--t-review); }
+  #btn-weak{ background:var(--t-weak); }
+  #btn-focus{ background:var(--t-focus); }
+  section.card:nth-of-type(even) #btn-focus{ background:var(--t-focus); }
+  #btn-random{ background:var(--t-random); }
+  section.card:nth-of-type(even) #btn-random{ background:var(--t-random); }
 
   .bar{ height:6px; border-radius:99px; background:var(--fill2); overflow:hidden; }
   .bar > i{ display:block; height:100%; border-radius:99px; background:var(--btn); }
@@ -385,28 +389,36 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
     --shadow-pop:0 2px 6px rgba(35,45,80,.08), 0 16px 40px rgba(35,45,80,.14);
     --hm1:rgba(109,132,214,.2); --hm2:rgba(109,132,214,.42); --hm3:rgba(109,132,214,.66); --hm4:#6d84d6;
     --p-blue:#7ea6d8; --p-lav:#a493d8; --p-mint:#7fbfa8; --p-rose:#dfa3b8; --p-sand:#dbba84; --p-sky:#8fc3dd;
+    --t-review:rgba(110,180,150,.13); --t-weak:rgba(216,178,116,.15); --t-focus:rgba(164,147,216,.13); --t-random:rgba(127,178,214,.13);
   }
   :root[data-theme="dark"]{
     --bg:#131419;
-    --wash:linear-gradient(158deg,#181c26 0%,#15161f 42%,#1a1724 72%,#131a17 100%);
+    --wash:linear-gradient(158deg,#1d2639 0%,#1a1a30 42%,#261c38 72%,#152720 100%);
     --surface:rgba(39,41,51,.62); --surface-alt:rgba(29,30,39,.62); --elev:rgba(35,36,45,.96);
     --ink:#f2f2f5; --dim:#a9a9b2; --faint:#71717c;
     --hair:rgba(255,255,255,.09); --border:rgba(255,255,255,.09);
     --fill:rgba(160,170,200,.09); --fill2:rgba(160,170,200,.15);
     --glass:rgba(39,41,51,.5); --glass-strong:rgba(46,47,58,.85);
     --accent:#2997ff; --btn:#0071e3;
-    --accent2:#ff6961; --good:#30d158; --warn:#ff9f0a;
-    --accent-soft:rgba(41,151,255,.14); --accent2-soft:rgba(255,105,97,.12);
-    --good-soft:rgba(48,209,88,.12); --warn-soft:rgba(255,159,10,.13);
+    --accent2:#ff8a80; --good:#30d158; --warn:#ff9f0a;
+    --accent-soft:rgba(41,151,255,.2); --accent2-soft:rgba(255,69,58,.26);
+    --good-soft:rgba(48,209,88,.18); --warn-soft:rgba(255,159,10,.2);
     --fill-bad:#d70015; --fill-good:#157a35; --fill-warn:#a34a00;
     --seg-track:rgba(160,170,200,.12); --seg-sel:#55565f; --tabpill:#3b3c47;
     --tabbar:rgba(23,24,30,.72);
     --chrome:rgba(27,28,35,.82);
     --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.32), 0 28px 56px rgba(0,0,0,.26);
     --shadow-pop:0 2px 6px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.5);
-    --hm1:rgba(126,146,224,.22); --hm2:rgba(126,146,224,.45); --hm3:rgba(126,146,224,.68); --hm4:#7e92e0;
-    --p-blue:#8fb0dd; --p-lav:#b3a3e0; --p-mint:#8fcbb2; --p-rose:#e3aec2; --p-sand:#e0c48f; --p-sky:#9cc9e0;
+    --hm1:rgba(110,132,235,.24); --hm2:rgba(110,132,235,.48); --hm3:rgba(110,132,235,.7); --hm4:#6e86ea;
+    --p-blue:#7ea9ec; --p-lav:#ab8ff7; --p-mint:#5fd3a5; --p-rose:#f09bbd; --p-sand:#f2bc5e; --p-sky:#74c0e8;
+    --t-review:rgba(48,209,88,.22); --t-weak:rgba(255,176,66,.26); --t-focus:rgba(168,140,255,.26); --t-random:rgba(64,156,255,.24);
   }
+
+  /* Dark only: the exam card's sub-line keeps its presence on the
+     stronger red tint (the shared base rule fades it to .75). */
+  @media (prefers-color-scheme: dark){ .modebtn.exam small{ opacity:.92; } }
+  :root[data-theme="dark"] .modebtn.exam small{ opacity:.92; }
+  :root[data-theme="light"] .modebtn.exam small{ opacity:.75; }
 
   /* ---------- additions: stale banner / topic map / memo / report ---------- */
   .stalebanner{
@@ -2603,7 +2615,7 @@ function saveWeeklyImage(ws) {
      one frosted panel floating on it; deep gray with a whisper of
      color in dark mode. Quiet only — no glow, no neon. */
   var bgGrad = ctx.createLinearGradient(0, 0, 1080, 1080);
-  if (dark) { bgGrad.addColorStop(0, "#181c26"); bgGrad.addColorStop(.5, "#14151d"); bgGrad.addColorStop(1, "#171420"); }
+  if (dark) { bgGrad.addColorStop(0, "#1d2639"); bgGrad.addColorStop(.5, "#1a1a30"); bgGrad.addColorStop(1, "#261c38"); }
   else { bgGrad.addColorStop(0, "#e7f0fa"); bgGrad.addColorStop(.45, "#edecf8"); bgGrad.addColorStop(.75, "#f3edf7"); bgGrad.addColorStop(1, "#e9f4ef"); }
   ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, 1080, 1080);
   ctx.beginPath();
@@ -2611,7 +2623,7 @@ function saveWeeklyImage(ws) {
   ctx.fillStyle = dark ? "rgba(255,255,255,.05)" : "rgba(255,255,255,.66)"; ctx.fill();
   ctx.strokeStyle = dark ? "rgba(255,255,255,.1)" : "rgba(27,32,52,.08)"; ctx.lineWidth = 2; ctx.stroke();
   var acGrad = ctx.createLinearGradient(72, 0, 216, 0);
-  acGrad.addColorStop(0, dark ? "#8fb0dd" : "#7ea6d8"); acGrad.addColorStop(1, dark ? "#b3a3e0" : "#a493d8");
+  acGrad.addColorStop(0, dark ? "#7ea9ec" : "#7ea6d8"); acGrad.addColorStop(1, dark ? "#ab8ff7" : "#a493d8");
   ctx.fillStyle = acGrad;
   ctx.beginPath();
   if (ctx.roundRect) ctx.roundRect(72, 88, 144, 12, 6); else ctx.rect(72, 88, 144, 12);

@@ -428,6 +428,24 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
     color:var(--ink); font-size:13px; font-weight:600; line-height:1.4;
   }
   .stalebanner .chev{ margin-left:auto; }
+  /* Slim remaining-time strip under the 今日のタスク hero: one quiet
+     line, no new navigation, no layout change to the home flow. */
+  .timebar{
+    display:flex; align-items:center; gap:8px; margin-top:10px; padding:9px 14px;
+    border-radius:14px; border:1px solid var(--hair); background:var(--surface);
+    box-shadow:0 1px 3px rgba(35,45,80,.05);
+    font-size:12.5px; color:var(--dim); line-height:1.45;
+  }
+  .timebar strong{ color:var(--ink); font-weight:700; }
+  /* Consecutive-correct combo in the drill header: a small quiet pill
+     in the good tint — no animation, no glow. */
+  .combopill{
+    display:inline-flex; align-items:center; border-radius:999px; padding:5px 11px;
+    font-size:12px; font-weight:700; background:var(--good-soft); color:var(--good);
+    border:1px solid var(--hair);
+  }
+  /* Rank title on the progress tab. */
+  .titlename{ font-size:27px; font-weight:700; letter-spacing:-.02em; line-height:1.25; margin-top:4px; }
   .statusdot{ flex:none; width:10px; height:10px; border-radius:50%; margin-right:2px; }
   .maplegend{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; font-size:11px; color:var(--dim); }
   .maplegend span{ display:inline-flex; align-items:center; gap:5px; }
@@ -1228,6 +1246,38 @@ function applyDisplayMode() {
   var m = ensureExtras().displayMode;
   if (m === "dark" || m === "light") document.documentElement.setAttribute("data-theme", m);
   else document.documentElement.removeAttribute("data-theme");
+  applyMasteryWash();
+}
+/* ---------------- progress-linked background wash ----------------
+   As the overall mastered rate rises, the home wash deepens slightly
+   from its faintest state toward a richer pastel — a static color
+   change only (set as an inline --wash, no animation, no transition),
+   staying well inside the current pastel range in both schemes. */
+var WASH_DEEP = {
+  light: ["#d8e6f5", "#dbd8f2", "#e6d7f1", "#d3ecdf"],
+  dark: ["#2d4470", "#322b6f", "#482b78", "#1e5138"]
+};
+var WASH_POS = [0, 42, 70, 100];
+function lerpHex(a, b, t) {
+  var pa = [1, 3, 5].map(function (i) { return parseInt(a.substr(i, 2), 16); });
+  var pb = [1, 3, 5].map(function (i) { return parseInt(b.substr(i, 2), 16); });
+  var c = pa.map(function (v, i) { return Math.round(v + (pb[i] - v) * t); });
+  return "#" + c.map(function (v) { return ("0" + v.toString(16)).slice(-2); }).join("");
+}
+function washBaseStops(dark) {
+  /* The current (faintest) wash stops, mirrored from the CSS tokens. */
+  return dark ? ["#26365a", "#262057", "#3a2260", "#17402e"] : ["#e7f0fa", "#edecf8", "#f3edf7", "#e9f4ef"];
+}
+function applyMasteryWash() {
+  if (typeof CARDS === "undefined" || !CARDS.length) return;
+  var mastered = 0;
+  CARDS.forEach(function (c) { var p = prog(c.id); if (p && p.m) mastered++; });
+  var rate = Math.min(1, mastered / CARDS.length);
+  var dt = document.documentElement.getAttribute("data-theme");
+  var dark = dt === "dark" || (!dt && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  var base = washBaseStops(dark), deep = WASH_DEEP[dark ? "dark" : "light"];
+  var parts = base.map(function (b, i) { return lerpHex(b, deep[i], rate) + " " + WASH_POS[i] + "%"; });
+  document.documentElement.style.setProperty("--wash", "linear-gradient(158deg," + parts.join(",") + ")");
 }
 /* How many records have not reached Supabase yet: changed progress rows,
    changed day rows and queued answer-history rows. Zero hides the badge. */
@@ -1425,6 +1475,34 @@ function interleaveByChapter(list) {
   while (more) { more = false; order.forEach(function (ch) { if (byCh[ch].length) { out.push(byCh[ch].shift()); more = true; } }); }
   return out;
 }
+/* Cards missed (× or あやふや) on the previous study day — the most
+   recent day before today (05:00 boundary) with any study activity.
+   Membership is decided by each card's last-answer date, so a card
+   already re-answered today drops out on its own. Deck scoping matches
+   the due pool: only a keisan selection scopes them to keisan alone. */
+function revengeCards(deckSel) {
+  var dates = Object.keys(studiedDates()).filter(function (d) { return d < todayStr(); }).sort();
+  if (!dates.length) return [];
+  var prevDay = dates[dates.length - 1];
+  var pool = (deckSel === "keisan" ? scopeCards("keisan") : CARDS).filter(drillable);
+  return pool.filter(function (c) {
+    var p = prog(c.id);
+    return !!p && (p.r === "missed" || p.r === "shaky") && p.ls && studyDateStr(new Date(p.ls)) === prevDay;
+  }).sort(function (a, b) { return chIdx(a.ch) - chIdx(b.ch) || a.so - b.so || a.id - b.id; });
+}
+/* The learner's own pace from the session records (state.days keeps
+   per-day drill seconds and answer counts): average seconds per
+   question across every recorded day. Too little history falls back
+   to a provisional 30 seconds per question. */
+function avgSecPerQuestion() {
+  var sec = 0, n = 0;
+  Object.keys(state.days).forEach(function (d) {
+    var r = state.days[d];
+    if (r && r.n > 0 && r.sec > 0) { sec += r.sec; n += r.n; }
+  });
+  if (n < 10 || sec <= 0) return { sec: 30, estimated: true };
+  return { sec: sec / n, estimated: false };
+}
 function buildTodayPlan(deckSel) {
   var now = Date.now();
   var target = Math.min(20, Math.max(5, Math.round((state.settings.dailyMinutes || 15) / 1.5)));
@@ -1440,33 +1518,40 @@ function buildTodayPlan(deckSel) {
       used[c.id] = true; picked.push(c); cap--;
     }
   }
+  /* Yesterday's misses lead the plan (翌朝リベンジ): cards whose last
+     answer on the previous study day was × or あやふや are placed at
+     the head as a plan-ordering priority only — the review-interval
+     records are untouched, and answering them records as usual. */
+  var revenge = revengeCards(deckSel);
+  take(revenge, target);
+  var nRevenge = picked.length;
   var due = duePool.filter(function (c) { return isDue(c, now); }).sort(function (a, b) { return (prog(a.id).nr || 0) - (prog(b.id).nr || 0); });
   take(due, Math.max(1, Math.floor(target / 2)));
-  var nDue = picked.length;
+  var nDue = picked.length - nRevenge;
   /* Due cards past the half cap stay eligible here (as in the internal
      app): a missed/shaky card whose deadline has come is still weak, and
      must not be crowded out by fresh cards. */
   var weak = mainPool.filter(function (c) { return !used[c.id] && isWeak(c); });
   weak.sort(function (a, b) { return (prog(b.id).ls || 0) - (prog(a.id).ls || 0); });
   take(weak, target);
-  var nWeak = picked.length - nDue;
+  var nWeak = picked.length - nRevenge - nDue;
   var freshAB = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && (c.rk === "A" || c.rk === "B"); });
   var freshC = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && c.rk === "C"; });
   take(interleaveByChapter(freshAB), target);
   take(interleaveByChapter(freshC), target);
-  var nFresh = picked.length - nDue - nWeak;
+  var nFresh = picked.length - nRevenge - nDue - nWeak;
   var review = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && p && p.a > 0 && !p.m; });
   review.sort(function (a, b) { return (prog(a.id).nr || Infinity) - (prog(b.id).nr || Infinity); });
   take(review, target);
-  var nReview = picked.length - nDue - nWeak - nFresh;
+  var nReview = picked.length - nRevenge - nDue - nWeak - nFresh;
   /* If due cards alone exceed the half cap, fill whatever room is left
      with them before finishing (same rule as the internal app), so the
      plan never comes back short while deadlines are still waiting. */
   var beforeBackfill = picked.length;
   take(due, target);
   var nDueTotal = nDue + (picked.length - beforeBackfill);
-  var duePart = picked.slice(0, nDue), rest = interleaveByChapter(picked.slice(nDue));
-  return { items: duePart.concat(rest), target: target, breakdown: { due: nDueTotal, weak: nWeak, fresh: nFresh, review: nReview } };
+  var headPart = picked.slice(0, nRevenge + nDue), rest = interleaveByChapter(picked.slice(nRevenge + nDue));
+  return { items: headPart.concat(rest), target: target, breakdown: { revenge: nRevenge, due: nDueTotal, weak: nWeak, fresh: nFresh, review: nReview } };
 }
 /* ---------------- weak-topic focus drill ----------------
    Per-topic accuracy from the cumulative counters recordAnswer keeps
@@ -2035,6 +2120,7 @@ function resultBadge(c) {
 }
 function render() {
   stopTimer();
+  applyMasteryWash();
   if (!DATA) { appEl().innerHTML = '<div class="boot">問題データを読み込めませんでした。</div>'; return; }
   if (view.tab === "auth") renderAuth();
   else if (view.tab === "newpw") renderNewPassword();
@@ -2067,6 +2153,7 @@ function renderHome() {
     .sort(function (a, b) { return (b.savedAt || "") < (a.savedAt || "") ? -1 : 1; });
   var bd = plan.breakdown;
   var planChips = "";
+  if (bd.revenge) planChips += '<span class="chip hot">前回のミスのリベンジ ' + bd.revenge + "</span>";
   if (bd.due) planChips += '<span class="chip hot">復習期限 ' + bd.due + "</span>";
   if (bd.weak) planChips += '<span class="chip">苦手 ' + bd.weak + "</span>";
   if (bd.fresh) planChips += '<span class="chip">新規 ' + bd.fresh + "</span>";
@@ -2123,6 +2210,15 @@ function renderHome() {
     '<div class="chips">' + planChips + "</div>" +
     '<button type="button" class="bigbtn" id="btn-today" ' + (plan.items.length ? "" : "disabled") + ">" +
     (plan.items.length ? "今日のタスクを始める（" + plan.items.length + "問）" : "今日のタスクは完了") + "</button></section>";
+
+  /* Remaining-time estimate for today's task: a slim strip only —
+     the learner's own pace (seconds per question from the session
+     records) times the questions left in the plan. */
+  if (plan.items.length) {
+    var pace = avgSecPerQuestion();
+    var estMin = Math.max(1, Math.round(plan.items.length * pace.sec / 60));
+    html += '<div class="timebar"><span>今日のタスクは <strong>あと約' + estMin + '分</strong>の目安です（残り' + plan.items.length + "問 × 1問約" + Math.round(pace.sec) + "秒" + (pace.estimated ? "・仮のペースで計算" : "・あなたのペースで計算") + "）</span></div>";
+  }
 
   if (resumes.length) {
     /* 3+ parked drills would push the whole home down, so they collapse
@@ -2766,6 +2862,39 @@ function reportsHtml() {
   return h + "</section>";
 }
 
+/* ---------------- rank title (progress tab only) ----------------
+   A quiet ladder keyed to the cumulative mastered count, named after
+   the 会計・監査 career path. Shown only here — never on home. */
+var TITLE_LADDER = [
+  { min: 0, name: "初学者" },
+  { min: 15, name: "簿記見習い" },
+  { min: 40, name: "仕訳担当" },
+  { min: 80, name: "決算担当" },
+  { min: 140, name: "監査アシスタント" },
+  { min: 220, name: "監査シニア" },
+  { min: 330, name: "監査マネージャー" },
+  { min: 480, name: "監査パートナー" },
+  { min: 700, name: "公認会計士" }
+];
+function titleHtml(mastered) {
+  var cur = TITLE_LADDER[0], next = null;
+  for (var i = 0; i < TITLE_LADDER.length; i++) {
+    if (mastered >= TITLE_LADDER[i].min) cur = TITLE_LADDER[i];
+    else { next = TITLE_LADDER[i]; break; }
+  }
+  var h = '<section class="glass card"><div class="small dim b">現在の称号</div>' +
+    '<div class="titlename">' + esc(cur.name) + "</div>" +
+    '<p class="small dim" style="margin:4px 0 0">定着した問題は累計 <span class="b" style="color:var(--ink)">' + mastered + "問</span>です。</p>";
+  if (next) {
+    var span = next.min - cur.min, doneIn = mastered - cur.min;
+    h += '<div class="bar" style="margin-top:12px"><i class="good" style="width:' + Math.max(0, Math.min(100, Math.round(doneIn / span * 100))) + '%"></i></div>' +
+      '<p class="tiny dim" style="margin:6px 0 0">次の称号「' + esc(next.name) + "」まで あと" + (next.min - mastered) + "問</p>";
+  } else {
+    h += '<p class="tiny dim" style="margin:8px 0 0">最高位の称号です。</p>';
+  }
+  return h + "</section>";
+}
+
 /* ---------------- progress / settings ---------------- */
 function renderProgress() {
   var all = cardStats(CARDS);
@@ -2808,6 +2937,7 @@ function renderProgress() {
     '<div class="grow"><div class="small dim b">連続学習</div><div><span class="num tnum">' + streak + '</span> <span class="dim">日</span></div></div>' +
     (daysLeft != null ? '<div class="grow"><div class="small dim b">目標日まで</div><div><span class="num tnum">' + daysLeft + '</span> <span class="dim">日</span></div></div>' : "") +
     '</div><div class="dots14">' + days14 + '</div><p class="tiny dim" style="margin:8px 0 0">直近14日（色つき＝ドリルを解いた日）</p></section>' +
+    titleHtml(all.mastered) +
     '<section class="glass card"><h2 style="font-size:16.5px">直近7日のドリル時間</h2><div class="weekbars">' + week + "</div></section>" +
     weeklySummaryHtml() +
     weeklyTestHtml() +
@@ -3356,6 +3486,33 @@ function explainKeywords(card) {
   if (!de || !de.keywords || de.keywords.length < 2) return null;
   return de.keywords;
 }
+/* Consecutive confident-correct streak within this session, derived
+   from the answer log so looking back / re-answering stay consistent:
+   a confident「分かった」extends it, a miss resets it, and a lucky
+   correct（あやふや正解）or a self-reported あやふや neither extends
+   nor breaks it. */
+function sessionCombo() {
+  if (!S || !S.ansLog) return 0;
+  var n = 0;
+  for (var i = 0; i < S.ansLog.length; i++) {
+    var e = S.ansLog[i];
+    if (!e || e.skipped || e.grade == null) continue;
+    if (e.grade === "known" && e.confidence !== "guess") n++;
+    else if (e.grade === "missed") n = 0;
+  }
+  return n;
+}
+/* 「この論点をもう数問」 pool: the other drillable cards on the same
+   topic (same chapter + 論点), minus the current card and any card
+   already answered in this session. 説明 cards stay frozen out via
+   drillable(), exactly as in every other pool. */
+function topicMorePool(card) {
+  var doneIds = {};
+  if (S && S.ansLog) S.ansLog.forEach(function (e) { if (e && e.grade != null) doneIds[e.id] = true; });
+  return CARDS.filter(function (c) {
+    return c.id !== card.id && c.ch === card.ch && baseTopic(c.tp) === baseTopic(card.tp) && drillable(c) && !doneIds[c.id];
+  });
+}
 function kwJudge(total, said) {
   var r = total ? said / total : 0;
   if (r >= 0.75) return { grade: "known", confidence: "sure", label: "自信あり正解" };
@@ -3388,8 +3545,10 @@ function renderSession() {
     (S.spec.rank ? '<span class="tag a">' + (S.spec.rank === "AB" ? "ランクA・Bのみ" : "ランク" + esc(S.spec.rank) + "のみ") + "</span>" : "") +
     '<div class="bar" style="flex:1"><i style="width:' + Math.round(S.idx / S.cards.length * 100) + '%"></i></div>' +
     '<span class="small dim b tnum">' + (dispIdx + 1) + " / " + S.cards.length + "</span></div>";
+  var combo = isExam ? 0 : sessionCombo();
   html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">' +
     '<span class="timerpill' + (S.paused ? " paused" : "") + '"><span id="timer-clock" class="tnum">' + fmtClock(S.elapsed) + '</span><span class="st">' + (S.paused ? "一時停止中" : "計測中") + "</span></span>" +
+    (combo >= 2 ? '<span class="combopill">' + combo + "連続正解</span>" : "") +
     '<button type="button" class="pausebtn" id="btn-pause">' + (S.paused ? "再開する" : "一時停止") + "</button>" +
     (!redoing && (reviewing ? S.viewIdx > 0 : S.idx > 0) ? '<button type="button" class="pausebtn" id="btn-prev-q">‹ 前の問題</button>' : "") +
     (S.spec.timeLimitSec ? '<span class="timerpill"><span id="limit-clock" class="tnum">' + fmtClock(Math.max(0, S.spec.timeLimitSec - S.elapsed)) + '</span><span class="st">制限時間の残り</span></span>' : "") +
@@ -3451,6 +3610,14 @@ function renderSession() {
       '<div style="display:flex;gap:8px;margin-top:6px;align-items:center"><input type="text" class="memoinput" id="memo-input" maxlength="120" placeholder="間違えた理由や覚え方を1行で" value="' + esc(cardMemo(card.id)) + '">' +
       '<button type="button" class="smallbtn accent" id="btn-memo-save" style="flex:none">保存</button></div></div>';
     html += '<button type="button" class="smallbtn" id="btn-report" style="margin-top:12px">' + (isReported(card.id) ? "問題の誤りを報告済み（タップで取り消し）" : "問題の誤りを報告") + "</button>";
+    /* 「この論点をもう数問」: only on the live question (not while
+       looking back or re-answering), and only while the topic still
+       has unasked drillable cards — when they run out, the mini
+       session simply ends on the usual done screen. */
+    if (!reviewing && !redoing) {
+      var morePool = topicMorePool(card);
+      if (morePool.length) html += '<button type="button" class="bigbtn ghost" id="btn-more-topic" style="margin-top:10px">この論点をもう数問（あと' + morePool.length + '問）</button>';
+    }
     html += "</div>";
   }
   html += "</article>";
@@ -3558,6 +3725,16 @@ function renderSession() {
     else { reps.push({ id: card.id, at: new Date().toISOString() }); toast("問題の誤りを報告しました。進捗・設定からまとめてコピーできます"); }
     persistLocal();
     renderSession();
+  });
+  var bmt = document.getElementById("btn-more-topic");
+  if (bmt) bmt.addEventListener("click", function () {
+    var pool = topicMorePool(card);
+    if (!pool.length) { toast("この論点の他の問題は出し切りました"); return; }
+    /* Park the current session first (it stays resumable from home),
+       then run a mini session of just this topic's remaining cards. */
+    flushStudyTime();
+    persistSnapshot();
+    startSession({ mode: "all", order: "sequential", deck: "all", cardIds: shuffleArr(pool.map(function (c) { return c.id; })), label: "論点ドリル: " + baseTopic(card.tp) });
   });
 
   var bpq = document.getElementById("btn-prev-q");

@@ -3108,25 +3108,28 @@ function renderProgress() {
 /* ---------------- random drill setup ----------------
    Pick a count (preset or free-form), the question types, and a deck
    range; the session is then built from a shuffled draw and recorded
-   exactly like any other drill. The 説明 type (qa cards that ask for a
-   written explanation of a topic) is frozen: it is kept in the data
+   exactly like any other drill. The qa type (一問一答 cards, whose
+   answers are written explanations of a topic — the 説明 / production
+   format) is frozen as a whole: every qa card is kept in the data
    for later 論文式 study but is never drawn, here or in any other
    study path (see drillable()). */
 var rndCount = 10;           /* preset count; 0 = all */
 var rndCustom = "";          /* free-form count; wins over the preset while set */
 var rndDeck = "all";
-var rndFormats = { ox: true, qa: true, mcq: true, fill: true, proc: true, explain: false };
-var RND_FORMAT_LABELS = { ox: "○×", qa: "一問一答", mcq: "選択", fill: "穴埋め", proc: "手順", explain: "説明" };
+var rndFormats = { ox: true, mcq: true, fill: true, proc: true };
+var RND_FORMAT_LABELS = { ox: "○×", mcq: "選択", fill: "穴埋め", proc: "手順" };
 var RND_FORMAT_ORDER = ["ox", "qa", "mcq", "fill", "proc"];
 function isExplainCard(c) {
-  return c.f === "qa" && /説明せよ|説明しなさい|説明すること|述べよ|論じよ/.test(c.q || "");
+  return c.f === "qa";
 }
-/* 説明 (production) cards are FROZEN: kept in the data (and in past
-   records) for later 論文式 study, but excluded from every question
-   pool — today's tasks, random draws, weak-focus drills, chapter
-   tests, weekly tests and exam mode all build from drillable cards. */
+/* 説明 (production) cards — the whole qa format — are FROZEN: kept in
+   the data (and in past records) for later 論文式 study, but excluded
+   from every question pool — today's tasks, random draws, weak-focus
+   drills, chapter tests, weekly tests and exam mode all build from
+   drillable cards. The freeze is decided by format alone (f === "qa"),
+   never by the wording of the question text. */
 function drillable(c) { return !isExplainCard(c); }
-function rndCategory(c) { return isExplainCard(c) ? "explain" : c.f; }
+function rndCategory(c) { return c.f; }
 function rndPool() {
   return scopeCards(rndDeck).filter(function (c) { return drillable(c) && !!rndFormats[rndCategory(c)]; });
 }
@@ -3158,7 +3161,7 @@ function renderRandomSetup() {
     '<div class="pickrow">' + RND_FORMAT_ORDER.filter(function (f) { return catCounts[f]; }).map(function (f) {
       return '<button type="button" class="pickchip' + (rndFormats[f] ? " sel" : "") + '" data-rfmt="' + f + '">' + esc(RND_FORMAT_LABELS[f]) + ' <span class="cnt">' + catCounts[f] + "問</span></button>";
     }).join("") + "</div>" +
-    '<p class="tiny dim" style="margin:8px 2px 0">「説明」（論点の説明を求める記述タイプ）は論文式対策用に保留中のため、現在は出題されません。計算問題は下の「出題範囲」で計算を選ぶと出ます。</p></section>';
+    '<p class="tiny dim" style="margin:8px 2px 0">「一問一答」（論点の説明を答えるタイプ）は論文式対策用に保留中のため、現在は出題されません。計算問題は下の「出題範囲」で計算を選ぶと出ます。</p></section>';
   html += '<section class="glass card"><h2 style="font-size:16.5px">出題範囲</h2>' +
     '<div class="seg" style="margin-top:12px">' + ["all", "kiso", "jissen", "keisan"].map(function (d) {
       return '<button type="button" data-rdeck="' + d + '" class="' + (rndDeck === d ? "sel" : "") + '">' + DECK_LABELS[d] + "</button>";

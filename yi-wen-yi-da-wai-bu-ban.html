@@ -3515,7 +3515,7 @@ function remapExplLabels(text, card) {
     if (o && d && o !== d) map[o] = d;
   });
   if (!Object.keys(map).length) return text;
-  return String(text).replace(/(^|[\s、。・「」（）：:；;／/…―ー])([アイウエオカ])(?=[はもがをにのとへや、。，．・「」『』（）()：:；;／/…―ー\s]|$)/g,
+  return String(text).replace(/(^|[\s、。・「」（）：:；;／/…―ーはのと肢個〜めりてしるくぐれいな])([アイウエオカ])(?=[はもがをにのとへや、。・「」『』（）()：:；;／/…―ー〜\s]|$|である|であり|も誤|は誤|の誤|は逆|も逆|は正|も正|が正|は対|は入|はす|は資|は流|は固|は無|は有|は別|は同|は範|は具|は範|は表|は計|は処|は取|は償|は減|は損|は利|は売|は購|は製|は自|は賃|は投|は現|は預|は手|は債|は株|は資|は経|は営|は特|は雑|は受|は支|は未|は長|は短|は流動|は固定)/g,
     function (m, pre, lab) { return pre + (map[lab] || lab); });
 }
 function hlExpl(text, card) {

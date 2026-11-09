@@ -3343,8 +3343,36 @@ document.addEventListener("visibilitychange", function () {
 /* Explanation keyword emphasis (feature 26), kept restrained: the
    topic's dictionary keywords, 「quoted」 terms and figures with units
    are bolded; everything else stays plain. Runs on the escaped text. */
+/* Explanation label remap (2026-11-09 fix): choices are shuffled per
+   session and relabelled by display position, but explanations refer to
+   limbs by their ORIGINAL labels. Rewrite standalone limb-label
+   references in the explanation to display labels using the session's
+   order for this card, so the text matches the on-screen choices.
+   Only standalone label mentions are rewritten: a label at the start of
+   the text or after whitespace/punctuation, followed by a particle or
+   punctuation (は・も・が・を・に・の・と・は、・。・「・」・（・）・：・
+   、). Labels glued inside other words are never touched. When no
+   session order exists (dictionary/search surfaces) the original text
+   is returned unchanged, because those surfaces show original order. */
+function remapExplLabels(text, card) {
+  if (!text || !card || !card.cs || card.cs.length < 2) return text;
+  if (typeof S === "undefined" || !S || !S.orders) return text;
+  var order = S.orders[card.id];
+  if (!order) return text;
+  var identity = true;
+  for (var i = 0; i < order.length; i++) if (order[i] !== i) { identity = false; break; }
+  if (identity) return text;
+  var map = {};
+  order.forEach(function (origIdx, dispIdx) {
+    var o = CHOICE_LABELS[origIdx], d = CHOICE_LABELS[dispIdx];
+    if (o && d && o !== d) map[o] = d;
+  });
+  if (!Object.keys(map).length) return text;
+  return String(text).replace(/(^|[\s、。・「」（）：:；;／/…―ー])([アイウエオカ])(?=[はもがをにのとへや、。，．・「」『』（）()：:；;／/…―ー\s]|$)/g,
+    function (m, pre, lab) { return pre + (map[lab] || lab); });
+}
 function hlExpl(text, card) {
-  var h = esc(text);
+  var h = esc(card ? remapExplLabels(text, card) : text);
   var de = card ? dictEntryFor(card) : null;
   var kws = de && de.keywords ? de.keywords.slice().sort(function (a, b) { return b.length - a.length; }) : [];
   kws.forEach(function (k) {

@@ -142,6 +142,7 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .seg.ranks button:nth-child(4), .seg.ranks button:nth-child(5){ grid-column:span 3; }
 
   .modegrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .modegrid.tier3{ grid-template-columns:1fr 1fr 1fr; }
   .modebtn{ border-radius:20px; background:var(--fill); padding:16px 12px; font-size:14.5px; font-weight:600; text-align:center; }
   section.card:nth-of-type(even) .modebtn{ background:var(--fill2); }
   .modebtn small{ display:block; margin-top:3px; font-size:11px; font-weight:500; color:var(--dim); }
@@ -2077,6 +2078,8 @@ function buildWeakFocusCards(deck) {
 var view = { tab: "home" }; /* home | topics | topic | dict | progress | session | done */
 var homeDeck = "all", homeOrder = "sequential", homeRank = "all";
 var resumesOpen = false; /* home: with 3+ parked drills the resume list starts collapsed behind a 「中断中 N件」 toggle */
+var homeDetailOpen = false; /* home: deck/order/rank + random/exam controls live behind a 「詳細設定」 toggle (2026-11-11 tidy-up: home had 3 seg rows + 9 mode buttons stacked in one card) */
+var homeChaptersOpen = false; /* home: the chapter list starts collapsed behind a toggle (2026-11-11 tidy-up) */
 var topicChapter = null, dictQuery = "", dictResults = null, dictDraft = "";
 var dictShown = 24; /* browse mode: how many dictionary entries are in the DOM (grows via もっと表示) */
 var appEl = function () { return document.getElementById("app"); };
@@ -2670,6 +2673,8 @@ function renderHome() {
       '<button type="button" class="bigbtn ghost" id="btn-claim-no">引き継がない</button></section>';
   }
 
+  var pace = plan.items.length ? avgSecPerQuestion() : null;
+  var estMin = pace ? Math.max(1, Math.round(plan.items.length * pace.sec / 60)) : 0;
   var heroDate = "";
   try { heroDate = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "long", day: "numeric", weekday: "short" }).format(new Date()); } catch (e) {}
   html += '<section class="glass card">' +
@@ -2678,16 +2683,12 @@ function renderHome() {
     '<p class="small dim" style="margin:10px 0 0">範囲を選ばなくて大丈夫です。復習期限→苦手→新規（A・B優先で章を混ぜて出題）の順に、今日やる分を自動で組んであります。</p>' +
     '<div class="chips">' + planChips + "</div>" +
     '<button type="button" class="bigbtn" id="btn-today" ' + (plan.items.length ? "" : "disabled") + ">" +
-    (plan.items.length ? "今日のタスクを始める（" + plan.items.length + "問）" : "今日のタスクは完了") + "</button></section>";
+    (plan.items.length ? "今日のタスクを始める（" + plan.items.length + "問）" : "今日のタスクは完了") + "</button>" +
+    (plan.items.length ? '<p class="tiny dim" style="margin:10px 2px 0">あと約' + estMin + "分の目安です（残り" + plan.items.length + "問 × 1問約" + Math.round(pace.sec) + "秒" + (pace.estimated ? "・仮のペース" : "・あなたのペース") + "）</p>" : "") + "</section>";
 
-  /* Remaining-time estimate for today's task: a slim strip only —
-     the learner's own pace (seconds per question from the session
-     records) times the questions left in the plan. */
-  if (plan.items.length) {
-    var pace = avgSecPerQuestion();
-    var estMin = Math.max(1, Math.round(plan.items.length * pace.sec / 60));
-    html += '<div class="timebar"><span>今日のタスクは <strong>あと約' + estMin + '分</strong>の目安です（残り' + plan.items.length + "問 × 1問約" + Math.round(pace.sec) + "秒" + (pace.estimated ? "・仮のペースで計算" : "・あなたのペースで計算") + "）</span></div>";
-  }
+  /* Remaining-time estimate for today's task now lives inside the hero
+     card as one small line (2026-11-11 tidy-up: it used to be a separate
+     strip under the hero). pace/estMin are computed above the hero. */
 
   if (resumes.length) {
     /* 3+ parked drills would push the whole home down, so they collapse
@@ -2719,14 +2720,14 @@ function renderHome() {
     html += "</section>";
   }
 
-  html += '<section class="glass card"><div class="abstrip"><div class="grow"><div class="small dim b">A・B論点の定着</div>' +
-    '<div><span class="num tnum">' + ab.mastered + '</span> <span class="dim">/ ' + ab.total + '問</span></div></div>' +
-    '<div style="flex:1.2"><div class="bar"><i class="good" style="width:' + (ab.total ? Math.round(ab.mastered / ab.total * 100) : 0) + '%"></i></div>' +
-    '<div class="tiny dim" style="margin-top:5px">全体では 定着' + st.mastered + " ・ 回答済み" + st.attempted + " / " + st.total + "問</div></div></div></section>";
-
-  html += heatmapHtml();
-
-  html += '<section class="glass card"><div class="seg" role="tablist" aria-label="デッキ切替">' +
+  /* Drill-start card (2026-11-11 tidy-up): the three tiers （基礎・応用・
+     実践） are the primary row, the four filters （全問題・復習だけ・苦手
+     だけ・弱点集中） sit in one 2x2 grid, and the deck/order/rank
+     segmented rows plus ランダム出題・本番形式 moved behind a 「詳細
+     設定」 toggle — this card used to stack 3 seg rows and 9 buttons
+     with overlapping purposes. The A・B strip and heatmap moved below
+     this card so the start buttons sit right under the hero. */
+  var detailPanelHtml = '<div style="margin-top:10px"><div class="seg" role="tablist" aria-label="デッキ切替">' +
     ["all", "kiso", "jissen", "keisan"].map(function (d) {
       return '<button type="button" data-deck="' + d + '" class="' + (homeDeck === d ? "sel" : "") + '">' + DECK_LABELS[d] + "</button>";
     }).join("") + "</div>" +
@@ -2740,19 +2741,36 @@ function renderHome() {
       return '<button type="button" data-rank="' + r.k + '" class="' + (homeRank === r.k ? "sel" : "") + '">' + r.label + "</button>";
     }).join("") + "</div>" +
     '<div class="modegrid">' +
+    '<button type="button" class="modebtn" id="btn-random">ランダム出題<small>問題数・形式・範囲を選んでシャッフル</small></button>' +
+    '<button type="button" class="modebtn exam" id="btn-exam">本番形式<small>選択問題のみ・最後に一括採点</small></button>' +
+    "</div></div>";
+
+  html += '<section class="glass card"><h2 style="font-size:16.5px">ドリルを始める</h2>' +
+    '<div class="modegrid tier3" style="margin-top:10px">' +
+    '<button type="button" class="modebtn" id="btn-tier-kiso">基礎<small>基礎デッキを順番に</small></button>' +
+    '<button type="button" class="modebtn" id="btn-tier-ouyou">応用<small>実戦デッキ・A・Bのみ</small></button>' +
+    '<button type="button" class="modebtn exam" id="btn-tier-jissen">実践<small>4肢から正しい2つを選ぶ</small></button>' +
+    "</div>" +
+    '<div class="modegrid">' +
     '<button type="button" class="modebtn" id="btn-all">全問題<small>' + scope.filter(drillable).length + "問を順番に</small></button>" +
     '<button type="button" class="modebtn" id="btn-review" ' + (dueCount ? "" : "disabled") + ">復習だけ<small>期限が来た " + dueCount + "問</small></button>" +
     '<button type="button" class="modebtn" id="btn-weak" ' + (weakCount ? "" : "disabled") + ">苦手だけ<small>×・あやふや " + weakCount + "問</small></button>" +
-    '<button type="button" class="modebtn exam" id="btn-exam">本番形式<small>選択問題のみ・最後に一括採点</small></button>' +
+    '<button type="button" class="modebtn" id="btn-focus" ' + (focusCards.length ? "" : "disabled") + ">弱点集中<small>" +
+    (focusCards.length ? "正答率の低い論点から " + focusCards.length + "問を編成" : "対象の論点はまだありません") + "</small></button>" +
     "</div>" +
-    '<button type="button" class="modebtn focus" id="btn-focus" ' + (focusCards.length ? "" : "disabled") + ">弱点集中ドリル<small>" +
-    (focusCards.length ? "正答率の低い論点から自動で " + focusCards.length + "問を編成" : "対象の論点はまだありません") + "</small></button>" +
-    '<button type="button" class="modebtn focus" id="btn-random">ランダム出題<small>問題数・形式・範囲を選んでシャッフル</small></button>' +
-    '<div class="modegrid">' +
-    '<button type="button" class="modebtn" id="btn-tier-kiso">基礎<small>基礎デッキの簡単めを順番に</small></button>' +
-    '<button type="button" class="modebtn" id="btn-tier-ouyou">応用<small>実戦デッキ・ランクA・Bのみ</small></button>' +
-    "</div>" +
-    '<button type="button" class="modebtn exam" id="btn-tier-jissen">実践<small>本番形式・4肢から正しい2つを選ぶ（理論のみ）</small></button></section>';
+    '<button type="button" id="btn-detail-toggle" aria-expanded="' + (homeDetailOpen ? "true" : "false") + '" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 2px 2px">' +
+    '<span style="flex:1;min-width:0"><span class="b" style="font-size:14.5px">詳細設定</span>' +
+    '<span class="tiny dim" style="display:block;margin-top:2px">デッキ・順番・ランクの絞り込み、ランダム出題、本番形式</span></span>' +
+    '<span class="chev" aria-hidden="true" style="display:inline-block;transition:transform .25s' + (homeDetailOpen ? ";transform:rotate(90deg)" : "") + '">›</span></button>' +
+    (homeDetailOpen ? detailPanelHtml : "") +
+    "</section>";
+
+  html += '<section class="glass card"><div class="abstrip"><div class="grow"><div class="small dim b">A・B論点の定着</div>' +
+    '<div><span class="num tnum">' + ab.mastered + '</span> <span class="dim">/ ' + ab.total + '問</span></div></div>' +
+    '<div style="flex:1.2"><div class="bar"><i class="good" style="width:' + (ab.total ? Math.round(ab.mastered / ab.total * 100) : 0) + '%"></i></div>' +
+    '<div class="tiny dim" style="margin-top:5px">全体では 定着' + st.mastered + " ・ 回答済み" + st.attempted + " / " + st.total + "問</div></div></div></section>";
+
+  html += heatmapHtml();
 
   if (weakTopics.length) {
     html += '<section class="glass card"><h2 style="font-size:16.5px">苦手な論点</h2>';
@@ -2764,13 +2782,18 @@ function renderHome() {
     html += "</section>";
   }
 
-  html += '<section class="glass card"><h2 style="font-size:16.5px">章から選ぶ</h2>';
-  chNames.forEach(function (ch) {
-    var cs = cardStats(chapters[ch]);
-    html += '<button type="button" class="rowline" data-chapter="' + esc(ch) + '"><span class="grow"><span class="ttl">' + esc(chapterLabel(ch)) + "</span>" +
-      '<span class="meta" style="display:block">' + cs.total + "問 ・ 回答済み" + cs.attempted + " ・ 定着" + cs.mastered + " ・ 苦手" + cs.weak + (cs.due ? " ・ 復習期限" + cs.due : "") + "</span>" +
-      '<span class="bar" style="display:block;margin-top:6px"><i class="good" style="width:' + (cs.total ? Math.round(cs.mastered / cs.total * 100) : 0) + '%"></i></span></span><span class="chev">›</span></button>';
-  });
+  html += '<section class="glass card"><button type="button" id="btn-chapters-toggle" aria-expanded="' + (homeChaptersOpen ? "true" : "false") + '" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:2px 0">' +
+    '<span style="flex:1;min-width:0"><span class="b" style="font-size:16.5px">章から選ぶ</span>' +
+    '<span class="tiny dim" style="display:block;margin-top:2px">' + (homeChaptersOpen ? "タップで閉じます" : "全" + chNames.length + "章・タップで開きます（章ごとの学習は論点タブからもできます）") + '</span></span>' +
+    '<span class="chev" aria-hidden="true" style="display:inline-block;transition:transform .25s' + (homeChaptersOpen ? ";transform:rotate(90deg)" : "") + '">›</span></button>';
+  if (homeChaptersOpen) {
+    chNames.forEach(function (ch) {
+      var cs = cardStats(chapters[ch]);
+      html += '<button type="button" class="rowline" data-chapter="' + esc(ch) + '"><span class="grow"><span class="ttl">' + esc(chapterLabel(ch)) + "</span>" +
+        '<span class="meta" style="display:block">' + cs.total + "問 ・ 回答済み" + cs.attempted + " ・ 定着" + cs.mastered + " ・ 苦手" + cs.weak + (cs.due ? " ・ 復習期限" + cs.due : "") + "</span>" +
+        '<span class="bar" style="display:block;margin-top:6px"><i class="good" style="width:' + (cs.total ? Math.round(cs.mastered / cs.total * 100) : 0) + '%"></i></span></span><span class="chev">›</span></button>';
+    });
+  }
   html += "</section></div>" + tabbarHtml("home");
   appEl().innerHTML = html;
   applyViewSlide();
@@ -2788,6 +2811,10 @@ function renderHome() {
   if (bst) bst.addEventListener("click", function () { view = { tab: "stale" }; render(); window.scrollTo(0, 0); });
   var brt = document.getElementById("btn-resumes-toggle");
   if (brt) brt.addEventListener("click", function () { resumesOpen = !resumesOpen; renderHome(); });
+  var bdt = document.getElementById("btn-detail-toggle");
+  if (bdt) bdt.addEventListener("click", function () { homeDetailOpen = !homeDetailOpen; renderHome(); });
+  var bct = document.getElementById("btn-chapters-toggle");
+  if (bct) bct.addEventListener("click", function () { homeChaptersOpen = !homeChaptersOpen; renderHome(); });
   var rb = document.querySelectorAll("[data-resume]");
   for (var i = 0; i < rb.length; i++) rb[i].addEventListener("click", function () {
     var r = resumes[Number(this.getAttribute("data-resume"))];
@@ -2813,13 +2840,15 @@ function renderHome() {
   document.getElementById("btn-weak").addEventListener("click", function () {
     startSession({ mode: "weak", order: homeOrder, rank: homeRank === "all" ? null : homeRank, deck: homeDeck, label: "苦手だけ" });
   });
-  document.getElementById("btn-exam").addEventListener("click", function () {
+  var bex = document.getElementById("btn-exam");
+  if (bex) bex.addEventListener("click", function () {
     startSession({ mode: "all", order: homeOrder, rank: homeRank === "all" ? null : homeRank, deck: homeDeck, exam: true, label: "本番形式" });
   });
   document.getElementById("btn-focus").addEventListener("click", function () {
     startSession({ mode: "all", order: "sequential", deck: homeDeck, cardIds: focusCards.map(function (c) { return c.id; }), label: "弱点集中ドリル" });
   });
-  document.getElementById("btn-random").addEventListener("click", function () {
+  var brn = document.getElementById("btn-random");
+  if (brn) brn.addEventListener("click", function () {
     view = { tab: "random" }; render(); window.scrollTo(0, 0);
   });
   document.getElementById("btn-tier-kiso").addEventListener("click", function () {

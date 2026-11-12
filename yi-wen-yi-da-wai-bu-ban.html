@@ -449,6 +449,50 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
     font-size:12px; font-weight:700; background:var(--good-soft); color:var(--good);
     border:1px solid var(--hair);
   }
+  /* ---------- battle (お遊び) mode: quiet additions in the app palette ---------- */
+  .battlebanner{
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left;
+    margin-top:12px; padding:11px 15px; border-radius:16px; border:1px solid var(--hair);
+    background:var(--accent-soft);
+    color:var(--ink); font-size:13px; font-weight:600; line-height:1.4;
+  }
+  .battlebanner small{ display:block; font-weight:500; color:var(--dim); font-size:11.5px; margin-top:1px; }
+  .battlebanner .chev{ margin-left:auto; }
+  .enemyface{ font-size:62px; line-height:1.2; text-align:center; }
+  .enemyface.shake{ animation:bshake .45s ease; }
+  @keyframes bshake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-7px); } 40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); } 80%{ transform:translateX(3px); }
+  }
+  .hpbar{ height:10px; }
+  .hpbar > i{ transition:width .55s ease; }
+  .hpbar > i.enemy{ background:var(--accent2); }
+  .hpbar > i.player{ background:var(--good); }
+  .dmgpop{
+    position:absolute; left:50%; top:2px; transform:translateX(-50%);
+    font-size:25px; font-weight:800; color:var(--accent2); pointer-events:none;
+    text-shadow:0 1px 0 var(--surface); animation:bpop 1.15s ease forwards; z-index:3;
+  }
+  .dmgpop.crit{ font-size:31px; color:var(--warn); }
+  .dmgpop.heal{ color:var(--good); }
+  @keyframes bpop{
+    0%{ opacity:0; transform:translate(-50%,10px) scale(.8); }
+    18%{ opacity:1; transform:translate(-50%,0) scale(1.08); }
+    30%{ transform:translate(-50%,-2px) scale(1); }
+    75%{ opacity:1; }
+    100%{ opacity:0; transform:translate(-50%,-26px); }
+  }
+  .gaugedots{ font-size:14px; letter-spacing:3px; color:var(--accent); }
+  .gaugedots .off{ color:var(--fill2); }
+  .skillrow{ display:flex; gap:10px; margin-top:10px; }
+  .skillbtn{
+    flex:1; padding:12px 10px; border-radius:16px; border:1px solid var(--hair);
+    background:var(--fill2); color:var(--dim); font-weight:700; font-size:14px; line-height:1.35;
+  }
+  .skillbtn small{ display:block; font-size:11px; font-weight:500; margin-top:2px; }
+  .skillbtn.on{ background:var(--btn); color:#fff; box-shadow:0 2px 6px rgba(0,113,227,.16), 0 8px 18px rgba(0,113,227,.13); }
+  .skillbtn:disabled{ opacity:.55; }
   /* Rank title on the progress tab. */
   .titlename{ font-size:27px; font-weight:700; letter-spacing:-.02em; line-height:1.25; margin-top:4px; }
   .statusdot{ flex:none; width:10px; height:10px; border-radius:50%; margin-right:2px; }
@@ -2037,6 +2081,9 @@ function render() {
   else if (view.tab === "jissen") renderJissenSetup();
   else if (view.tab === "jissensession") renderJissenSession();
   else if (view.tab === "jissendone") renderJissenDone();
+  else if (view.tab === "battle") renderBattleSetup();
+  else if (view.tab === "battlesession") renderBattleSession();
+  else if (view.tab === "battledone") renderBattleDone();
   armReveal();
 }
 
@@ -2201,6 +2248,11 @@ function renderHome() {
     (homeDetailOpen ? detailPanelHtml : "") +
     "</section>";
 
+  /* お遊びモード entrance (2026-11-12): one slim banner under the
+     drill-start card. It is a side path only — the drill card above
+     and everything below keep their existing order and content. */
+  html += '<button type="button" class="battlebanner" id="btn-battle"><span aria-hidden="true">⚔️</span><span>お遊びモード ― モンスターとバトル<small>正解で攻撃、まちがえるとダメージ。学習記録には残りません</small></span><span class="chev">›</span></button>';
+
   html += '<section class="glass card"><div class="abstrip"><div class="grow"><div class="small dim b">A・B論点の定着</div>' +
     '<div><span class="num tnum">' + ab.mastered + '</span> <span class="dim">/ ' + ab.total + '問</span></div></div>' +
     '<div style="flex:1.2"><div class="bar"><i class="good" style="width:' + (ab.total ? Math.round(ab.mastered / ab.total * 100) : 0) + '%"></i></div>' +
@@ -2280,6 +2332,8 @@ function renderHome() {
   });
   var bst = document.getElementById("btn-stale");
   if (bst) bst.addEventListener("click", function () { view = { tab: "stale" }; render(); window.scrollTo(0, 0); });
+  var bbt = document.getElementById("btn-battle");
+  if (bbt) bbt.addEventListener("click", function () { view = { tab: "battle" }; render(); window.scrollTo(0, 0); });
   var brt = document.getElementById("btn-resumes-toggle");
   if (brt) brt.addEventListener("click", function () { resumesOpen = !resumesOpen; renderHome(); });
   var bdt = document.getElementById("btn-detail-toggle");
@@ -4241,6 +4295,461 @@ function renderJissenDone() {
   document.getElementById("btn-j-home").addEventListener("click", function () { J = null; view = { tab: "home" }; render(); });
 }
 
+/* ---------------- お遊び (battle) mode ----------------
+   A for-fun monster battle over the drillable mcq/ox pool. Nothing
+   here touches the study records: answers are never written to
+   the drill progress / day records, and the only persistence is the
+   localStorage "battleRecord" (player XP/level, lifetime kills,
+   bests, title) — the same separation as jissenHistory.
+   Damage model:
+     base = 12 + playerLevel + comboBefore*2 (combo = current streak)
+     the answer that brings the streak to 5 is a 会心 (x1.5)
+     answering within 10 seconds adds +5 （早答えボーナス)
+     boss enemies take 20% less damage （鉄壁）; Lv6+ regular enemies
+     dodge 15% of attacks （身のこなし）. The 必殺技 skill always hits.
+   Skill gauge: +1 per correct answer, full at 3. Before answering,
+   the player may spend it on 必殺技 (3x damage) or 回復 (+30 HP) —
+   which one to use is the player's call. Boss levels (every 5th)
+   have double HP and draw from rank-A cards first. Player HP only
+   recovers +20 when advancing to the next stage (and via 回復）. */
+var B = null; /* active battle run */
+var BATTLE_GAUGE_MAX = 3;
+var BATTLE_STAGES = [
+  { min: 1, emoji: "🐌", name: "のろのろスライム" },
+  { min: 2, emoji: "🐛", name: "あおむしモンスター" },
+  { min: 3, emoji: "🐸", name: "けろけろフロッグ" },
+  { min: 4, emoji: "🦎", name: "すばやトカゲ" },
+  { min: 5, emoji: "🐗", name: "あばれイノシシ" },
+  { min: 6, emoji: "🦂", name: "どくバリサソリ" },
+  { min: 7, emoji: "🦖", name: "ちびティラノ" },
+  { min: 8, emoji: "🐙", name: "ぬめぬめオクトパス" },
+  { min: 9, emoji: "👹", name: "あかオニ" },
+  { min: 10, emoji: "🐉", name: "いにしえのドラゴン" },
+  { min: 11, emoji: "👑🐉", name: "ドラゴンキング" }
+];
+function bStageFor(level) {
+  var s = BATTLE_STAGES[0];
+  for (var i = 0; i < BATTLE_STAGES.length; i++) if (level >= BATTLE_STAGES[i].min) s = BATTLE_STAGES[i];
+  return s;
+}
+function bTraitFor(level, boss) {
+  if (boss) return { key: "guard", label: "鉄壁：受けるダメージ-20%", dodge: 0, reduce: 0.2 };
+  if (level >= 6) return { key: "dodge", label: "身のこなし：15%で攻撃を回避", dodge: 0.15, reduce: 0 };
+  return { key: "", label: "", dodge: 0, reduce: 0 };
+}
+function bRecordDefault() { return { xp: 0, pLevel: 1, totalKills: 0, bossKills: 0, bestLevel: 0, bestCombo: 0, title: "見習い" }; }
+function bLoadRecord() {
+  var d = bRecordDefault();
+  var r = jLoad("battleRecord", null);
+  if (r) { for (var k in d) if (r[k] != null) d[k] = r[k]; }
+  return d;
+}
+function bTitleFor(rec) {
+  if (rec.bossKills >= 5) return "ボスハンター";
+  if (rec.totalKills >= 50) return "論点マスター";
+  if (rec.bestCombo >= 10) return "コンボキング";
+  if (rec.totalKills >= 20) return "モンスター討伐者";
+  if (rec.totalKills >= 1) return "駆け出しハンター";
+  return "見習い";
+}
+function bSaveRecord(rec) { rec.title = bTitleFor(rec); jSave("battleRecord", rec); }
+function bXpForLevel(lv) { return 40 + (lv - 1) * 30; }
+function battlePool() {
+  return CARDS.filter(function (c) {
+    return drillable(c) && (c.f === "ox" || (c.f === "mcq" && c.cs && c.cs.length > 1));
+  });
+}
+function bSpawnEnemy() {
+  var lv = B.level;
+  var boss = lv % 5 === 0;
+  var st = bStageFor(lv);
+  var maxHp = (40 + lv * 20) * (boss ? 2 : 1);
+  var trait = bTraitFor(lv, boss);
+  B.enemy = {
+    level: lv, boss: boss, emoji: st.emoji,
+    name: st.name + (boss ? "【ボス】" : ""),
+    hp: maxHp, maxHp: maxHp, trait: trait, traitLabel: trait.label
+  };
+}
+function bDrawCard() {
+  var pool = battlePool();
+  var avail = pool.filter(function (c) { return !B.used[c.id]; });
+  if (!avail.length) { B.used = {}; avail = pool; }
+  if (B.enemy && B.enemy.boss) {
+    var aOnly = avail.filter(function (c) { return c.rk === "A"; });
+    if (aOnly.length) avail = aOnly;
+  }
+  var card = avail[Math.floor(Math.random() * avail.length)];
+  B.used[card.id] = true;
+  return card;
+}
+function bDealQuestion() {
+  B.card = bDrawCard();
+  B.revealed = false;
+  B.pickedLabel = null;
+  B.pickedOx = null;
+  B.choicesOpen = false;
+  if (B.card.f === "mcq") {
+    B.orders[B.card.id] = shuffleArr(B.card.cs.map(function (_, i) { return i; }));
+  }
+  B.qShownAt = Date.now();
+}
+function bDisplayInfo(card) {
+  var order = B.orders[card.id] || card.cs.map(function (_, i) { return i; });
+  var choices = order.map(function (oi) { return card.cs[oi]; });
+  var correctOrig = CHOICE_LABELS.indexOf(card.a);
+  var answer = correctOrig >= 0 ? CHOICE_LABELS[order.indexOf(correctOrig)] : card.a;
+  var correctText = correctOrig >= 0 ? card.cs[correctOrig] : "";
+  return { order: order, choices: choices, answer: answer, correctText: correctText };
+}
+function bBaseDamage() { return 12 + B.rec.pLevel + B.combo * 2; }
+function bApplyDamage(raw) {
+  var dmg = raw;
+  if (B.enemy.trait && B.enemy.trait.reduce) dmg *= (1 - B.enemy.trait.reduce);
+  return Math.max(1, Math.round(dmg));
+}
+function bDefeatEnemy() {
+  var e = B.enemy, rec = B.rec;
+  B.kills++;
+  rec.totalKills++;
+  if (e.boss) rec.bossKills++;
+  var gain = (8 + e.level * 2) * (e.boss ? 2 : 1);
+  rec.xp += gain;
+  var up = false;
+  while (rec.xp >= bXpForLevel(rec.pLevel)) { rec.xp -= bXpForLevel(rec.pLevel); rec.pLevel++; up = true; }
+  if (B.level + 1 > rec.bestLevel) rec.bestLevel = B.level + 1;
+  if (B.bestComboRun > rec.bestCombo) rec.bestCombo = B.bestComboRun;
+  bSaveRecord(rec);
+  B.phase = "defeated";
+  B.last = B.last || {};
+  B.last.xpGain = gain;
+  B.last.levelUp = up;
+}
+function bGameOver() {
+  var rec = B.rec;
+  if (B.level > rec.bestLevel) rec.bestLevel = B.level;
+  if (B.bestComboRun > rec.bestCombo) rec.bestCombo = B.bestComboRun;
+  bSaveRecord(rec);
+  B.phase = "over";
+  releaseWakeLock();
+  view = { tab: "battledone" };
+  renderBattleDone();
+  window.scrollTo(0, 0);
+}
+function bResolve(ok) {
+  if (!B || B.phase !== "fight" || B.revealed) return;
+  var fast = (Date.now() - B.qShownAt) <= 10000;
+  B.answered++;
+  B.revealed = true;
+  B.last = { hit: false };
+  if (ok) {
+    B.correct++;
+    var comboBefore = B.combo;
+    B.combo++;
+    if (B.combo > B.bestComboRun) B.bestComboRun = B.combo;
+    B.gauge = Math.min(BATTLE_GAUGE_MAX, B.gauge + 1);
+    var crit = (B.combo === 5);
+    var raw = 12 + B.rec.pLevel + comboBefore * 2;
+    if (crit) raw *= 1.5;
+    if (fast) raw += 5;
+    var dodged = !!(B.enemy.trait && B.enemy.trait.dodge && Math.random() < B.enemy.trait.dodge);
+    if (dodged) {
+      B.last.dodged = true;
+      B.last.crit = crit;
+    } else {
+      var dmg = bApplyDamage(raw);
+      B.enemy.hp -= dmg;
+      B.last.dmg = dmg;
+      B.last.crit = crit;
+      B.last.fast = fast;
+      B.last.hit = true;
+      B.last.popText = "-" + dmg + (crit ? " 会心!" : "");
+    }
+    if (B.enemy.hp <= 0) { B.enemy.hp = 0; bDefeatEnemy(); }
+  } else {
+    B.combo = 0;
+    B.php = Math.max(0, B.php - 10);
+    B.last.tookDmg = 10;
+    if (B.php <= 0) { bGameOver(); return; }
+  }
+  renderBattleSession();
+}
+function bAnswerMcq(label) {
+  if (!B || B.phase !== "fight" || B.revealed || !B.card || B.card.f !== "mcq") return;
+  B.pickedLabel = label;
+  bResolve(label === bDisplayInfo(B.card).answer);
+}
+function bAnswerOx(v) {
+  if (!B || B.phase !== "fight" || B.revealed || !B.card || B.card.f !== "ox") return;
+  B.pickedOx = v;
+  bResolve(v === B.card.a);
+}
+function bUseSkill(kind) {
+  if (!B || B.phase !== "fight" || B.revealed || B.gauge < BATTLE_GAUGE_MAX) return;
+  B.gauge = 0;
+  if (kind === "heal") {
+    var healed = Math.min(30, 100 - B.php);
+    B.php += healed;
+    B.last = { hit: false, heal: healed, popText: "+" + healed, msg: "スキル：回復（HP +" + healed + "）" };
+  } else {
+    var dmg = bApplyDamage(bBaseDamage() * 3);
+    B.enemy.hp -= dmg;
+    B.last = { hit: true, skill: true, dmg: dmg, popText: "-" + dmg, msg: "スキル：必殺技！" + dmg + "ダメージ" };
+    if (B.enemy.hp <= 0) { B.enemy.hp = 0; bDefeatEnemy(); }
+  }
+  renderBattleSession();
+}
+function bNext() {
+  if (!B) return;
+  if (B.phase === "defeated") {
+    B.level++;
+    B.php = Math.min(100, B.php + 20);
+    B.phase = "fight";
+    B.last = null;
+    bSpawnEnemy();
+    bDealQuestion();
+  } else if (B.phase === "fight" && B.revealed) {
+    B.last = null;
+    bDealQuestion();
+  } else return;
+  renderBattleSession();
+  window.scrollTo(0, 0);
+}
+function startBattle() {
+  if (!battlePool().length) { toast("対象の問題がありません"); return; }
+  B = {
+    rec: bLoadRecord(),
+    level: 1, php: 100, combo: 0, gauge: 0,
+    kills: 0, answered: 0, correct: 0, bestComboRun: 0,
+    enemy: null, card: null, revealed: false,
+    pickedLabel: null, pickedOx: null, choicesOpen: false,
+    used: {}, orders: {}, phase: "fight", last: null, qShownAt: 0
+  };
+  bSpawnEnemy();
+  bDealQuestion();
+  view = { tab: "battlesession" };
+  renderBattleSession();
+  window.scrollTo(0, 0);
+  requestWakeLock();
+}
+function exitBattle() {
+  if (B && B.phase !== "over") {
+    var rec = B.rec;
+    if (B.level > rec.bestLevel) rec.bestLevel = B.level;
+    if (B.bestComboRun > rec.bestCombo) rec.bestCombo = B.bestComboRun;
+    bSaveRecord(rec);
+  }
+  B = null;
+  releaseWakeLock();
+  view = { tab: "home" };
+  render();
+  window.scrollTo(0, 0);
+}
+/* Battle-local copy of remapExplLabels: identical rules, but the
+   choice order comes from B.orders (battle never runs a drill S). */
+function bRemapExplLabels(text, card) {
+  if (!text || !card || !card.cs || card.cs.length < 2) return text;
+  if (!B || !B.orders) return text;
+  var order = B.orders[card.id];
+  if (!order) return text;
+  var identity = true;
+  for (var i = 0; i < order.length; i++) if (order[i] !== i) { identity = false; break; }
+  if (identity) return text;
+  var map = {};
+  order.forEach(function (origIdx, dispIdx) {
+    var o = CHOICE_LABELS[origIdx], d = CHOICE_LABELS[dispIdx];
+    if (o && d && o !== d) map[o] = d;
+  });
+  if (!Object.keys(map).length) return text;
+  return String(text).replace(/(^|[\s、。・「」（）：:；;／/…―ーはのと肢個〜めりてしるくぐれいな])([アイウエオカ])(?=[はもがをにのとへや、。・「」『』（）()：:；;／/…―ー〜\s]|$|である|であり|も誤|は誤|の誤|は逆|も逆|は正|も正|が正|は対|は入|はす|は資|は流|は固|は無|は有|は別|は同|は範|は具|は範|は表|は計|は処|は取|は償|は減|は損|は利|は売|は購|は製|は自|は賃|は投|は現|は預|は手|は債|は株|は資|は経|は営|は特|は雑|は受|は支|は未|は長|は短|は流動|は固定)/g,
+    function (m, pre, lab) { return pre + (map[lab] || lab); });
+}
+function bExplHtml(card) {
+  var h = esc(bRemapExplLabels(card.ex, card));
+  var de = dictEntryFor(card);
+  var kws = de && de.keywords ? de.keywords.slice().sort(function (a, b) { return b.length - a.length; }) : [];
+  kws.forEach(function (k) {
+    var ek = esc(k);
+    if (ek && h.indexOf(ek) >= 0) h = h.split(ek).join("<strong>" + ek + "</strong>");
+  });
+  h = h.replace(/「([^」]{1,30})」/g, "「<strong>$1</strong>」");
+  h = h.replace(/(\d[\d,]*\.?\d*\s*(?:%|％|年|月|日|倍))/g, "<strong>$1</strong>");
+  return h;
+}
+function renderBattleSetup() {
+  var rec = bLoadRecord();
+  var pool = battlePool();
+  var xpMax = bXpForLevel(rec.pLevel);
+  var html = '<div class="wrap rise">';
+  html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-b-back" aria-label="ホームに戻る">‹</button>' +
+    '<h1 class="page serif" style="margin:0;font-size:22px">お遊びモード ― バトル</h1></div>';
+  html += '<p class="sub" style="margin-top:8px">一問一答の問題でモンスターと戦うお遊びモードです。正解すると攻撃、まちがえるとダメージを受けます。結果は通常の学習記録（復習間隔）には混ぜず、この端末のバトル記録にだけ残ります。</p>';
+  html += '<section class="glass card"><div class="tiny dim b">あなたの称号</div>' +
+    '<div class="titlename">' + esc(rec.title) + '</div>' +
+    '<div style="display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:10px" class="small">' +
+    '<span>プレイヤーLv <strong>' + rec.pLevel + '</strong></span>' +
+    '<span>基本ダメージ <strong>' + (12 + rec.pLevel) + '</strong>（+コンボ×2）</span>' +
+    '<span>累計撃破 <strong>' + rec.totalKills + '</strong>体</span>' +
+    '<span>ボス撃破 <strong>' + rec.bossKills + '</strong>体</span></div>' +
+    '<div class="bar" style="margin-top:10px"><i style="width:' + Math.min(100, Math.round(rec.xp / xpMax * 100)) + '%"></i></div>' +
+    '<div class="tiny dim" style="margin-top:5px">経験値 ' + rec.xp + ' / ' + xpMax + '（次のレベルまで） ・ ベスト到達レベル ' + (rec.bestLevel || "—") + ' ・ 最高コンボ ' + (rec.bestCombo || "—") + '</div></section>';
+  html += '<section class="glass card"><h2 style="font-size:16.5px">ルール</h2>' +
+    '<p class="small dim" style="margin:6px 0 0;line-height:1.9">敵を倒すと次のレベルへ（進むときHP+20回復）。5レベルごとのボスはHP2倍・受けるダメージ-20%で、問題はランクA中心に出ます。' +
+    '連続正解でコンボが伸びて威力アップ、5コンボ到達の一撃は会心（1.5倍）。10秒以内の早答えは+5ダメージ。' +
+    '正解でスキルゲージが溜まり、満タン（3つ）になると、問題に答える前に「必殺技（3倍ダメージ）」か「回復（HP+30）」のどちらかを使えます。' +
+    'レベル6以降の敵は攻撃を15%でかわします。あなたのHPが0になるとゲームオーバーです。</p>' +
+    '<button type="button" class="bigbtn" id="btn-b-start" ' + (pool.length ? "" : "disabled") + '>バトルをはじめる（対象 ' + pool.length + '問）</button></section>';
+  html += "</div>" + tabbarHtml("home");
+  appEl().innerHTML = html;
+  applyViewSlide();
+  bindTabs();
+  document.getElementById("btn-b-back").addEventListener("click", function () { view = { tab: "home" }; render(); window.scrollTo(0, 0); });
+  document.getElementById("btn-b-start").addEventListener("click", startBattle);
+}
+function renderBattleSession() {
+  if (!B) { view = { tab: "battle" }; renderBattleSetup(); return; }
+  if (B.phase === "over") { view = { tab: "battledone" }; renderBattleDone(); return; }
+  var e = B.enemy, card = B.card, rec = B.rec;
+  var isMcq = card.f === "mcq";
+  var info = isMcq ? bDisplayInfo(card) : null;
+  var html = '<div class="wrap rise" style="padding-bottom:40px">';
+  html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-b-exit" aria-label="バトルをやめてホームに戻る">✕</button>' +
+    '<span class="tag a">LEVEL ' + B.level + (e.boss ? " ・ ボス戦" : "") + '</span>' +
+    '<span class="small dim b" style="margin-left:auto">撃破 ' + B.kills + '体 ・ 回答 ' + B.answered + '問</span></div>';
+
+  /* enemy card, with damage pop + shake on the hit render */
+  html += '<section class="glass card" style="margin-top:12px;position:relative">';
+  if (B.last && B.last.popText) html += '<span class="dmgpop' + (B.last.crit ? " crit" : "") + (B.last.heal ? " heal" : "") + '">' + esc(B.last.popText) + '</span>';
+  html += '<div class="enemyface' + (B.last && B.last.hit ? " shake" : "") + '" aria-hidden="true">' + (B.phase === "defeated" ? "💥" : e.emoji) + '</div>' +
+    '<div style="text-align:center;margin-top:2px"><span class="b" style="font-size:16.5px">' + esc(e.name) + '</span>' +
+    (e.traitLabel ? '<div style="margin-top:4px"><span class="tag">' + esc(e.traitLabel) + '</span></div>' : "") + '</div>' +
+    '<div class="bar hpbar" style="margin-top:10px"><i class="enemy" style="width:' + (e.maxHp ? Math.max(0, Math.round(e.hp / e.maxHp * 100)) : 0) + '%"></i></div>' +
+    '<div class="tiny dim" style="text-align:center;margin-top:4px">敵HP ' + Math.max(0, e.hp) + ' / ' + e.maxHp + '</div></section>';
+
+  /* player card: HP, combo, skill gauge + skill buttons */
+  var gaugeDots = "";
+  for (var gi = 0; gi < BATTLE_GAUGE_MAX; gi++) gaugeDots += gi < B.gauge ? "●" : '<span class="off">●</span>';
+  var skillOn = B.gauge >= BATTLE_GAUGE_MAX && !B.revealed && B.phase === "fight";
+  html += '<section class="glass card" style="margin-top:12px">' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="b" style="font-size:14.5px">あなた（Lv' + rec.pLevel + '）</span>' +
+    (B.combo >= 2 ? '<span class="combopill">' + B.combo + '連続正解</span>' : "") +
+    (B.combo === 4 && B.phase === "fight" && !B.revealed ? '<span class="tag a">次の正解で会心の一撃！</span>' : "") +
+    '<span class="tiny dim" style="margin-left:auto">攻撃力 ' + (12 + rec.pLevel + B.combo * 2) + '</span></div>' +
+    '<div class="bar hpbar" style="margin-top:8px"><i class="player" style="width:' + Math.max(0, B.php) + '%"></i></div>' +
+    '<div class="tiny dim" style="margin-top:4px">HP ' + Math.max(0, B.php) + ' / 100</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="tiny dim b">スキルゲージ</span><span class="gaugedots">' + gaugeDots + '</span>' +
+    (B.gauge >= BATTLE_GAUGE_MAX ? '<span class="tiny b" style="color:var(--accent)">満タン：答える前に使えます</span>' : '<span class="tiny dim">正解で+1、' + BATTLE_GAUGE_MAX + 'つで使用可</span>') + '</div>' +
+    '<div class="skillrow">' +
+    '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-atk" ' + (skillOn ? "" : "disabled") + '>必殺技<small>通常の3倍ダメージ</small></button>' +
+    '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-heal" ' + (skillOn ? "" : "disabled") + '>回復<small>HP +30</small></button></div>' +
+    (B.last && B.last.msg ? '<p class="small b" style="margin:10px 2px 0;color:var(--accent)">' + esc(B.last.msg) + '</p>' : "") +
+    '</section>';
+
+  /* question card */
+  html += '<article class="glass qcard" style="margin-top:12px"><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+    '<span class="tag a">' + esc(card.ch) + '</span>' +
+    '<span class="b" style="font-size:14px">' + esc(baseTopic(card.tp)) + '</span>' +
+    '<span class="tag">' + esc(DECK_LABELS[card.d]) + '</span>' +
+    '<span class="tag">ランク' + esc(card.rk) + '</span>' +
+    '<span class="tag">' + esc(FORMAT_LABELS[card.f] || card.f) + '</span></div>' +
+    '<p class="q serif">' + esc(card.q) + '</p>';
+  if (B.revealed) {
+    var okAns = isMcq ? (B.pickedLabel === info.answer) : (B.pickedOx === card.a);
+    html += '<div class="ansbox">';
+    if (isMcq) {
+      html += '<p class="verdict ' + (okAns ? "ok" : "ng") + '">' + (okAns ? "正解！" : "不正解 — 正しくは「" + esc(info.answer) + "」") + '</p>';
+      if (info.correctText) html += '<p style="margin-top:8px;line-height:1.75">' + esc(info.correctText) + '</p>';
+    } else {
+      html += '<p class="verdict ' + (okAns ? "ok" : "ng") + '">' + (okAns ? "正解！" : "不正解 — 正しくは「" + esc(card.a) + "」") + '</p>';
+    }
+    var outcome = "";
+    if (okAns) {
+      if (B.last.dodged) outcome = "攻撃は かわされた！（ダメージなし）";
+      else if (B.last.dmg != null) outcome = (B.last.crit ? "会心の一撃！ " : "") + e.name + "に " + B.last.dmg + " ダメージ" + (B.last.fast ? "（早答えボーナス+5込み）" : "");
+    } else if (B.last.tookDmg != null) {
+      outcome = "あなたは " + B.last.tookDmg + " ダメージを受けた";
+    }
+    if (outcome) html += '<p class="small b" style="margin-top:8px">' + esc(outcome) + '</p>';
+    if (isMcq) {
+      html += '<button type="button" class="figtoggle" id="btn-b-choices" aria-expanded="' + (B.choicesOpen ? "true" : "false") + '">' + (B.choicesOpen ? "選択肢を閉じる" : "選択肢を見る") + '</button>';
+      if (B.choicesOpen) {
+        html += '<div class="choices" style="margin-top:12px">' + info.choices.map(function (choice, i) {
+          var label = CHOICE_LABELS[i];
+          var isRight = label === info.answer;
+          var isMine = label === B.pickedLabel;
+          var marks = "";
+          if (isRight) marks += '<span class="tag good">正解</span>';
+          if (isMine) marks += '<span class="tag ' + (isRight ? "good" : "bad") + '">あなたの回答</span>';
+          return '<div class="choice' + (isRight ? " right" : isMine ? " wrong" : "") + '"><span class="lab">' + label + '</span><span style="flex:1;min-width:0">' + esc(choice) +
+            (marks ? '<span style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">' + marks + "</span>" : "") + "</span></div>";
+        }).join("") + "</div>";
+      }
+    }
+    html += '<p class="explabel">解説</p><p class="expl">' + bExplHtml(card) + '</p>';
+    html += '</div>';
+  }
+  html += '</article>';
+
+  /* controls / defeat panel */
+  if (B.phase === "defeated") {
+    html += '<section class="glass card" style="margin-top:12px;text-align:center">' +
+      '<p class="verdict ok" style="font-size:19px">' + esc(e.name) + 'を たおした！</p>' +
+      '<p class="small dim" style="margin-top:8px;line-height:1.9">経験値 +' + (B.last.xpGain || 0) +
+      (B.last.levelUp ? '<br><span class="b" style="color:var(--accent)">プレイヤーレベルが ' + rec.pLevel + ' に上がった！ 基本ダメージが上がりました</span>' : "") +
+      '<br>次のレベルへ進むと HP が +20 回復します（上限100）</p>' +
+      '<button type="button" class="bigbtn" id="btn-b-next">LEVEL ' + (B.level + 1) + ' へ進む ›</button></section>';
+  } else if (!B.revealed) {
+    if (isMcq) {
+      html += '<div class="choices">' + info.choices.map(function (choice, i) {
+        var label = CHOICE_LABELS[i];
+        return '<button type="button" class="choice" data-bchoice="' + label + '"><span class="lab">' + label + '</span><span>' + esc(choice) + '</span></button>';
+      }).join("") + '</div>';
+    } else {
+      html += '<div class="oxgrid">' +
+        '<button type="button" class="choice" data-box="○" style="justify-content:center;font-size:19px;font-weight:800;padding:18px">○ 正しい</button>' +
+        '<button type="button" class="choice" data-box="×" style="justify-content:center;font-size:19px;font-weight:800;padding:18px">× 誤り</button></div>';
+    }
+  } else {
+    html += '<button type="button" class="bigbtn" id="btn-b-next">次の問題へ ›</button>';
+  }
+  html += '</div>';
+  appEl().innerHTML = html;
+  applyViewSlide();
+  document.getElementById("btn-b-exit").addEventListener("click", exitBattle);
+  var sk1 = document.getElementById("btn-b-skill-atk");
+  if (sk1) sk1.addEventListener("click", function () { bUseSkill("attack"); });
+  var sk2 = document.getElementById("btn-b-skill-heal");
+  if (sk2) sk2.addEventListener("click", function () { bUseSkill("heal"); });
+  var bc = document.getElementById("btn-b-choices");
+  if (bc) bc.addEventListener("click", function () { B.choicesOpen = !B.choicesOpen; renderBattleSession(); });
+  var bn = document.getElementById("btn-b-next");
+  if (bn) bn.addEventListener("click", bNext);
+  var chs = document.querySelectorAll("[data-bchoice]");
+  for (var ci = 0; ci < chs.length; ci++) chs[ci].addEventListener("click", function () { bAnswerMcq(this.getAttribute("data-bchoice")); });
+  var oxs = document.querySelectorAll("[data-box]");
+  for (var oi = 0; oi < oxs.length; oi++) oxs[oi].addEventListener("click", function () { bAnswerOx(this.getAttribute("data-box")); });
+}
+function renderBattleDone() {
+  if (!B) { view = { tab: "home" }; renderHome(); return; }
+  var rec = B.rec;
+  var rate = B.answered ? Math.round(B.correct / B.answered * 100) : 0;
+  var html = '<div class="wrap rise"><section class="glass card" style="margin-top:22px;text-align:center">' +
+    '<div style="font-size:52px" aria-hidden="true">💀</div>' +
+    '<h2 class="serif" style="font-size:22px;margin-top:6px">ゲームオーバー</h2>' +
+    '<p class="dim" style="margin:8px 0 0">LEVEL ' + B.level + ' の ' + esc(B.enemy ? B.enemy.name : "") + ' に敗れました</p>' +
+    '<div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap">' +
+    '<span class="pill on"><span class="dot"></span>到達レベル <strong>' + B.level + '</strong></span>' +
+    '<span class="pill"><span class="dot"></span>撃破 <strong>' + B.kills + '</strong>体</span>' +
+    '<span class="pill"><span class="dot"></span>回答 <strong>' + B.answered + '</strong>問</span>' +
+    '<span class="pill"><span class="dot"></span>正答率 <strong>' + rate + '%</strong></span></div>' +
+    '<p class="small dim" style="margin-top:14px;line-height:1.8">バトル記録: ベスト到達レベル ' + rec.bestLevel + ' ・ 累計撃破 ' + rec.totalKills + '体 ・ プレイヤーLv ' + rec.pLevel + ' ・ 称号「' + esc(rec.title) + '」<br>この結果は学習記録には残りません。</p>' +
+    '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap"><button type="button" class="bigbtn" id="btn-b-again" style="margin-top:0;flex:1">もう一度</button>' +
+    '<button type="button" class="bigbtn ghost" id="btn-b-home" style="margin-top:0;flex:1">ホームへ</button></div></section></div>';
+  appEl().innerHTML = html;
+  applyViewSlide();
+  document.getElementById("btn-b-again").addEventListener("click", function () { startBattle(); });
+  document.getElementById("btn-b-home").addEventListener("click", function () { B = null; view = { tab: "home" }; render(); window.scrollTo(0, 0); });
+}
 
 /* ---------------- auth screens ---------------- */
 function authErrorText(e) {

@@ -1,6 +1,6 @@
 // 一問一答 外部版 Service Worker: アプリ本体と図版をキャッシュし、オフラインでも開けるようにする。
 // Supabase（学習記録のAPI）へのリクエストは絶対にキャッシュしない（常にネットワーク）。
-const CACHE = 'qa-app-v27';
+const CACHE = 'qa-app-v28';
 const CORE = [
   './yi-wen-yi-da-wai-bu-ban.html',
   './manifest.json',

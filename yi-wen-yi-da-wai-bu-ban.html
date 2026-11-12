@@ -493,6 +493,87 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .skillbtn small{ display:block; font-size:11px; font-weight:500; margin-top:2px; }
   .skillbtn.on{ background:var(--btn); color:#fff; box-shadow:0 2px 6px rgba(0,113,227,.16), 0 8px 18px rgba(0,113,227,.13); }
   .skillbtn:disabled{ opacity:.55; }
+  /* ---------- battle polish: stage, ghost bars, log, juice ---------- */
+  .enemycard{ position:relative; overflow:hidden; --ringc:rgba(0,102,204,.45); --aurac:rgba(0,102,204,.20); }
+  .enemycard.tint-green{ background:linear-gradient(160deg, rgba(46,160,80,.13), var(--surface) 72%); --ringc:rgba(46,160,80,.5); --aurac:rgba(46,160,80,.22); }
+  .enemycard.tint-blue{ background:linear-gradient(160deg, rgba(0,102,204,.11), var(--surface) 72%); --ringc:rgba(0,102,204,.45); --aurac:rgba(0,102,204,.20); }
+  .enemycard.tint-purple{ background:linear-gradient(160deg, rgba(140,90,220,.13), var(--surface) 72%); --ringc:rgba(140,90,220,.5); --aurac:rgba(140,90,220,.22); }
+  .enemycard.tint-red{ background:linear-gradient(160deg, rgba(215,0,21,.11), var(--surface) 72%); --ringc:rgba(215,0,21,.5); --aurac:rgba(215,0,21,.20); }
+  .enemycard.tint-boss{ background:linear-gradient(160deg, rgba(215,0,21,.16), var(--surface) 72%); border-color:rgba(215,0,21,.45); --ringc:rgba(215,0,21,.65); --aurac:rgba(215,0,21,.28); }
+  .enemycard.tint-gold{ background:linear-gradient(160deg, rgba(217,164,0,.16), var(--surface) 72%); --ringc:rgba(217,164,0,.6); --aurac:rgba(217,164,0,.26); }
+  .enemystage{ position:relative; width:176px; height:150px; margin:0 auto; }
+  .enemystage .aura{ position:absolute; left:50%; top:42%; width:158px; height:158px; transform:translate(-50%,-50%); border-radius:50%; background:radial-gradient(circle, var(--aurac) 0%, transparent 66%); pointer-events:none; }
+  .enemystage .ring{ position:absolute; left:50%; bottom:4px; transform:translateX(-50%); width:122px; height:32px; border-radius:50%; border:3px solid var(--ringc); background:var(--fill); box-shadow:0 6px 14px rgba(35,45,80,.12); }
+  .enemyface{ font-size:76px; padding-top:10px; }
+  .enemyface .efloat{ display:inline-block; animation:bfloat 3.4s ease-in-out infinite; }
+  @keyframes bfloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-6px); } }
+  .enemyface.in{ animation:bIn .45s ease; }
+  @keyframes bIn{ from{ opacity:0; transform:scale(.7); } to{ opacity:1; transform:scale(1); } }
+  .enemyface.out{ animation:bOut .55s ease forwards; }
+  @keyframes bOut{ to{ opacity:.12; transform:scale(.72); } }
+  .bossbanner{
+    position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:4; white-space:nowrap;
+    padding:7px 18px; border-radius:999px; background:var(--accent2-soft); border:1px solid var(--hair);
+    color:var(--accent2); font-weight:800; font-size:14px; letter-spacing:.06em; pointer-events:none;
+    animation:bbanner 2.4s ease forwards;
+  }
+  @keyframes bbanner{
+    0%{ opacity:0; transform:translate(-50%,-8px) scale(.85); }
+    12%{ opacity:1; transform:translate(-50%,0) scale(1); }
+    80%{ opacity:1; } 100%{ opacity:0; transform:translate(-50%,0) scale(1); }
+  }
+  .speech{
+    display:inline-block; padding:6px 13px; border-radius:14px; background:var(--elev);
+    border:1px solid var(--hair); font-size:12.5px; font-weight:600; color:var(--ink);
+    box-shadow:0 1px 3px rgba(35,45,80,.06);
+  }
+  .hpbar{ height:14px; position:relative; }
+  .hpbar > i{ position:absolute; top:0; bottom:0; left:0; height:auto; }
+  .hpbar > i.enemy{ background:linear-gradient(90deg, #ff8a70, var(--accent2)); }
+  .hpbar > i.player{ background:linear-gradient(90deg, #4cc96a, var(--good)); }
+  .hpbar > i.ghost{ pointer-events:none; }
+  .hpbar > i.ghost.enemy{ background:#ffb3ab; opacity:.55; animation:bghost 1s ease .55s forwards; }
+  .hpbar > i.ghost.player{ background:#a7e8b8; opacity:.55; animation:bghost 1s ease .55s forwards; }
+  @keyframes bghost{ from{ width:var(--gw); } to{ width:var(--ge); } }
+  .hpbar .ticks{ position:absolute; inset:0; border-radius:99px; pointer-events:none;
+    background:repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), rgba(255,255,255,.35) calc(10% - 1px), rgba(255,255,255,.35) 10%); }
+  .playercard.hurt{ animation:bhurt .5s ease; }
+  @keyframes bhurt{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-3px); box-shadow:0 0 0 3px rgba(215,0,21,.30), var(--shadow-card); }
+    60%{ transform:translateX(3px); }
+  }
+  .playercard.lowhp{ animation:blow 1.6s ease-in-out infinite; }
+  @keyframes blow{ 0%,100%{ box-shadow:var(--shadow-card); } 50%{ box-shadow:0 0 0 3px rgba(215,0,21,.22), var(--shadow-card); } }
+  .combopill.pop{ animation:bcombo .45s ease; }
+  @keyframes bcombo{ 0%{ transform:scale(1); } 40%{ transform:scale(1.18); } 100%{ transform:scale(1); } }
+  .lvb{
+    flex:none; width:46px; height:46px; border-radius:50%; background:var(--accent); color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1;
+    box-shadow:0 4px 10px rgba(0,113,227,.25);
+  }
+  .lvb small{ font-size:8.5px; font-weight:700; letter-spacing:.08em; opacity:.85; }
+  .lvb b{ font-size:16px; margin-top:1px; }
+  .gaugepips{ display:inline-flex; gap:5px; align-items:center; }
+  .gaugepips .pip{ width:26px; height:9px; border-radius:99px; background:var(--fill2); }
+  .gaugepips .pip.on{ background:var(--accent); }
+  .gaugepips.full .pip{ animation:pipglow 1.1s ease-in-out infinite; }
+  @keyframes pipglow{ 0%,100%{ box-shadow:0 0 0 0 rgba(0,113,227,0); } 50%{ box-shadow:0 0 8px 2px rgba(0,113,227,.45); } }
+  .skillbtn.set{ background:var(--warn-soft); color:var(--warn); border:1px solid rgba(178,80,0,.35); opacity:1; }
+  .dmgpop{ text-shadow:0 1px 0 var(--surface), 1px 0 0 var(--surface), -1px 0 0 var(--surface), 0 -1px 0 var(--surface), 0 3px 8px rgba(35,45,80,.25); }
+  .dmgpop.crit{ font-size:36px; }
+  .dmgpop.skill{ font-size:40px; color:var(--accent); }
+  .dmgpop.miss{ font-size:17px; color:var(--dim); }
+  .battlelog{ margin-top:12px; padding:10px 16px; }
+  .battlelog .ll{ font-size:12.5px; color:var(--dim); padding:4px 0; border-top:1px dashed var(--hair); line-height:1.55; }
+  .battlelog .ll:first-child{ border-top:none; color:var(--ink); font-weight:600; }
+  .titlebadge{
+    display:inline-flex; align-items:center; gap:7px; padding:8px 16px; border-radius:999px;
+    background:linear-gradient(120deg, var(--warn-soft), var(--accent-soft)); border:1px solid var(--hair);
+    font-size:19px; font-weight:800;
+  }
+  .emojistrip{ display:flex; gap:7px; flex-wrap:wrap; font-size:19px; margin-top:10px; }
+  .donetint{ background:linear-gradient(160deg, rgba(215,0,21,.08), var(--surface) 70%); }
   /* Rank title on the progress tab. */
   .titlename{ font-size:27px; font-weight:700; letter-spacing:-.02em; line-height:1.25; margin-top:4px; }
   .statusdot{ flex:none; width:10px; height:10px; border-radius:50%; margin-right:2px; }
@@ -4306,12 +4387,24 @@ function renderJissenDone() {
      the answer that brings the streak to 5 is a 会心 (x1.5)
      answering within 10 seconds adds +5 （早答えボーナス)
      boss enemies take 20% less damage （鉄壁）; Lv6+ regular enemies
-     dodge 15% of attacks （身のこなし）. The 必殺技 skill always hits.
+     dodge 15% of attacks （身のこなし）.
    Skill gauge: +1 per correct answer, full at 3. Before answering,
-   the player may spend it on 必殺技 (3x damage) or 回復 (+30 HP) —
-   which one to use is the player's call. Boss levels (every 5th)
-   have double HP and draw from rank-A cards first. Player HP only
-   recovers +20 when advancing to the next stage (and via 回復）. */
+   the player may spend it on 回復 (+30 HP, immediate) or on 必殺技 —
+   which one to use is the player's call. 必殺技 does NOT deal damage
+   by itself: it arms a buff (B.skillSet) for the next attack. The
+   next correct answer deals x3 damage (stacks with 会心/早答え, and
+   dodge/鉄壁 still apply — it is not a guaranteed hit); a wrong
+   answer makes the buff fizzle. The buff survives enemy changes and
+   only ends when consumed, fizzled, or the run ends.
+   Enemy gimmicks: each question the enemy may be 力ため (charging,
+   ~40%): a wrong answer then costs 20 HP instead of 10. Treasure
+   monsters (~10% of non-boss spawns) have half HP and double XP.
+   Defeating an enemy without taking damage during that fight is a
+   パーフェクト撃破 (+50% XP). Boss levels (every 5th) have double
+   HP and draw from rank-A cards first. Player HP only recovers +20
+   when advancing to the next stage (and via 回復）. Optional sound
+   effects (Web Audio oscillators) default OFF; the toggle lives in
+   battleRecord.sound. */
 var B = null; /* active battle run */
 var BATTLE_GAUGE_MAX = 3;
 var BATTLE_STAGES = [
@@ -4337,7 +4430,7 @@ function bTraitFor(level, boss) {
   if (level >= 6) return { key: "dodge", label: "身のこなし：15%で攻撃を回避", dodge: 0.15, reduce: 0 };
   return { key: "", label: "", dodge: 0, reduce: 0 };
 }
-function bRecordDefault() { return { xp: 0, pLevel: 1, totalKills: 0, bossKills: 0, bestLevel: 0, bestCombo: 0, title: "見習い" }; }
+function bRecordDefault() { return { xp: 0, pLevel: 1, totalKills: 0, bossKills: 0, bestLevel: 0, bestCombo: 0, title: "見習い", sound: false }; }
 function bLoadRecord() {
   var d = bRecordDefault();
   var r = jLoad("battleRecord", null);
@@ -4354,6 +4447,68 @@ function bTitleFor(rec) {
 }
 function bSaveRecord(rec) { rec.title = bTitleFor(rec); jSave("battleRecord", rec); }
 function bXpForLevel(lv) { return 40 + (lv - 1) * 30; }
+function bLogPush(text) {
+  if (!B || !B.log) return;
+  B.log.push(text);
+  while (B.log.length > 9) B.log.shift();
+}
+function bLineFor(kind, boss, treasure) {
+  var pools = {
+    appear: ["あらわれた！", "ようすを うかがっている…", "こちらを じっと見ている"],
+    appearBoss: ["ただならぬ気配…！", "強そうだ。本気でいこう！"],
+    appearTreasure: ["キラキラ光っている…！", "中身が気になる…！"],
+    hurt: ["いてっ！", "ぐぬぬ…", "まだまだ これからだ！"],
+    taunt: ["いまだ！スキあり！", "チャンス到来！", "ふふん、効いたぞ"],
+    dodge: ["ヒュッ！ かわされた！", "すばやく 身をかわした！"]
+  };
+  var arr = pools[kind] || pools.appear;
+  if (kind === "appear" && boss) arr = pools.appearBoss;
+  if (kind === "appear" && treasure) arr = pools.appearTreasure;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function bTintClass(e) {
+  if (!e) return "tint-blue";
+  if (e.treasure) return "tint-gold";
+  if (e.boss) return "tint-boss";
+  if (e.level <= 3) return "tint-green";
+  if (e.level <= 6) return "tint-blue";
+  if (e.level <= 9) return "tint-purple";
+  return "tint-red";
+}
+function bToggleSound() {
+  if (B && B.rec) { B.rec.sound = !B.rec.sound; bSaveRecord(B.rec); return B.rec.sound; }
+  var rec = bLoadRecord();
+  rec.sound = !rec.sound;
+  bSaveRecord(rec);
+  return rec.sound;
+}
+function bBeep(freq, dur, delay, type) {
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!bBeep.ctx) bBeep.ctx = new AC();
+    var ctx = bBeep.ctx;
+    if (ctx.state === "suspended") ctx.resume();
+    var t = ctx.currentTime + (delay || 0);
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type || "square";
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.12));
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + (dur || 0.12) + 0.05);
+  } catch (e) {}
+}
+function bPlaySound(kind) {
+  var on = B && B.rec ? !!B.rec.sound : !!bLoadRecord().sound;
+  if (!on) return;
+  if (kind === "hit") { bBeep(220, 0.08, 0, "square"); bBeep(160, 0.1, 0.05, "square"); }
+  else if (kind === "correct") { bBeep(660, 0.09, 0, "sine"); bBeep(880, 0.12, 0.08, "sine"); }
+  else if (kind === "hurt") { bBeep(140, 0.16, 0, "sawtooth"); }
+  else if (kind === "defeat") { bBeep(523, 0.1, 0, "sine"); bBeep(659, 0.1, 0.09, "sine"); bBeep(784, 0.16, 0.18, "sine"); }
+  else if (kind === "levelup") { bBeep(587, 0.09, 0, "triangle"); bBeep(880, 0.09, 0.08, "triangle"); bBeep(1175, 0.16, 0.16, "triangle"); }
+}
 function battlePool() {
   return CARDS.filter(function (c) {
     return drillable(c) && (c.f === "ox" || (c.f === "mcq" && c.cs && c.cs.length > 1));
@@ -4362,14 +4517,22 @@ function battlePool() {
 function bSpawnEnemy() {
   var lv = B.level;
   var boss = lv % 5 === 0;
+  var treasure = !boss && Math.random() < 0.10;
   var st = bStageFor(lv);
   var maxHp = (40 + lv * 20) * (boss ? 2 : 1);
-  var trait = bTraitFor(lv, boss);
+  if (treasure) maxHp = Math.ceil(maxHp / 2);
+  var trait = treasure ? { key: "", label: "", dodge: 0, reduce: 0 } : bTraitFor(lv, boss);
   B.enemy = {
-    level: lv, boss: boss, emoji: st.emoji,
-    name: st.name + (boss ? "【ボス】" : ""),
-    hp: maxHp, maxHp: maxHp, trait: trait, traitLabel: trait.label
+    level: lv, boss: boss, treasure: treasure, emoji: treasure ? "🎁" : st.emoji,
+    name: treasure ? "たからばこモンスター" : st.name + (boss ? "【ボス】" : ""),
+    hp: maxHp, maxHp: maxHp, trait: trait,
+    traitLabel: treasure ? "宝箱：HP半分・経験値2倍" : trait.label
   };
+  B.hurtThisEnemy = false;
+  B.bossIntro = boss;
+  B.justSpawned = true;
+  B.line = bLineFor("appear", boss, treasure);
+  bLogPush(B.enemy.emoji + " " + B.enemy.name + " があらわれた！" + (treasure ? "（宝箱：HP半分・XP2倍）" : boss ? "（ボス戦！）" : ""));
 }
 function bDrawCard() {
   var pool = battlePool();
@@ -4393,6 +4556,10 @@ function bDealQuestion() {
     B.orders[B.card.id] = shuffleArr(B.card.cs.map(function (_, i) { return i; }));
   }
   B.qShownAt = Date.now();
+  /* Enemy 力ため (charging): decided per question. A wrong answer
+     while the enemy is charging costs double damage (see bResolve). */
+  B.charging = !!(B.enemy && B.phase === "fight" && Math.random() < 0.4);
+  if (B.charging) bLogPush(B.enemy.emoji + " " + B.enemy.name + " が力をためている…（間違えると被ダメージ2倍）");
 }
 function bDisplayInfo(card) {
   var order = B.orders[card.id] || card.cs.map(function (_, i) { return i; });
@@ -4414,6 +4581,9 @@ function bDefeatEnemy() {
   rec.totalKills++;
   if (e.boss) rec.bossKills++;
   var gain = (8 + e.level * 2) * (e.boss ? 2 : 1);
+  if (e.treasure) gain *= 2;
+  var perfect = !B.hurtThisEnemy;
+  if (perfect) gain = Math.round(gain * 1.5);
   rec.xp += gain;
   var up = false;
   while (rec.xp >= bXpForLevel(rec.pLevel)) { rec.xp -= bXpForLevel(rec.pLevel); rec.pLevel++; up = true; }
@@ -4424,6 +4594,10 @@ function bDefeatEnemy() {
   B.last = B.last || {};
   B.last.xpGain = gain;
   B.last.levelUp = up;
+  B.last.perfect = perfect;
+  bLogPush(e.name + " をたおした！（XP +" + gain + (perfect ? "・パーフェクト撃破！" : "") + "）");
+  bPlaySound("defeat");
+  if (up) bPlaySound("levelup");
 }
 function bGameOver() {
   var rec = B.rec;
@@ -4439,6 +4613,8 @@ function bGameOver() {
 function bResolve(ok) {
   if (!B || B.phase !== "fight" || B.revealed) return;
   var fast = (Date.now() - B.qShownAt) <= 10000;
+  var wasCharging = !!B.charging;
+  B.charging = false;
   B.answered++;
   B.revealed = true;
   B.last = { hit: false };
@@ -4449,27 +4625,54 @@ function bResolve(ok) {
     if (B.combo > B.bestComboRun) B.bestComboRun = B.combo;
     B.gauge = Math.min(BATTLE_GAUGE_MAX, B.gauge + 1);
     var crit = (B.combo === 5);
+    /* 必殺技 buff: armed by bUseSkill("attack"), consumed by this
+       attack (hit or dodged). x3 goes into the raw damage before
+       会心/早答え, and bApplyDamage (boss 鉄壁) still applies. */
+    var skillUsed = !!B.skillSet;
+    B.skillSet = false;
     var raw = 12 + B.rec.pLevel + comboBefore * 2;
+    if (skillUsed) raw *= 3;
     if (crit) raw *= 1.5;
     if (fast) raw += 5;
     var dodged = !!(B.enemy.trait && B.enemy.trait.dodge && Math.random() < B.enemy.trait.dodge);
     if (dodged) {
       B.last.dodged = true;
       B.last.crit = crit;
+      B.last.skill = skillUsed;
+      B.last.popText = "かわされた";
+      B.line = bLineFor("dodge", B.enemy.boss, B.enemy.treasure);
+      bLogPush("攻撃は かわされた！（ダメージなし）");
+      bPlaySound("correct");
     } else {
       var dmg = bApplyDamage(raw);
       B.enemy.hp -= dmg;
+      B.totalDmg += dmg;
       B.last.dmg = dmg;
       B.last.crit = crit;
       B.last.fast = fast;
+      B.last.skill = skillUsed;
       B.last.hit = true;
       B.last.popText = "-" + dmg + (crit ? " 会心!" : "");
+      B.line = bLineFor("hurt", B.enemy.boss, B.enemy.treasure);
+      bLogPush((skillUsed ? "必殺技！ " : "") + (crit ? "会心！ " : "") + dmg + "ダメージ" + (fast ? "（早答え+5）" : ""));
+      bPlaySound("hit");
     }
     if (B.enemy.hp <= 0) { B.enemy.hp = 0; bDefeatEnemy(); }
   } else {
     B.combo = 0;
-    B.php = Math.max(0, B.php - 10);
-    B.last.tookDmg = 10;
+    var took = wasCharging ? 20 : 10;
+    B.php = Math.max(0, B.php - took);
+    B.hurtThisEnemy = true;
+    B.last.tookDmg = took;
+    B.last.chargedHit = wasCharging;
+    if (B.skillSet) {
+      B.skillSet = false;
+      B.last.skillLost = true;
+      bLogPush("必殺技が消えてしまった…");
+    }
+    B.line = bLineFor("taunt", B.enemy.boss, B.enemy.treasure);
+    bLogPush("あなたは " + took + " ダメージを受けた" + (wasCharging ? "（力をためた一撃！）" : ""));
+    bPlaySound("hurt");
     if (B.php <= 0) { bGameOver(); return; }
   }
   renderBattleSession();
@@ -4486,16 +4689,21 @@ function bAnswerOx(v) {
 }
 function bUseSkill(kind) {
   if (!B || B.phase !== "fight" || B.revealed || B.gauge < BATTLE_GAUGE_MAX) return;
+  if (kind === "attack" && B.skillSet) return;
   B.gauge = 0;
   if (kind === "heal") {
     var healed = Math.min(30, 100 - B.php);
     B.php += healed;
     B.last = { hit: false, heal: healed, popText: "+" + healed, msg: "スキル：回復（HP +" + healed + "）" };
+    bLogPush("回復スキル：HP +" + healed);
   } else {
-    var dmg = bApplyDamage(bBaseDamage() * 3);
-    B.enemy.hp -= dmg;
-    B.last = { hit: true, skill: true, dmg: dmg, popText: "-" + dmg, msg: "スキル：必殺技！" + dmg + "ダメージ" };
-    if (B.enemy.hp <= 0) { B.enemy.hp = 0; bDefeatEnemy(); }
+    /* 必殺技 is a buff, not an attack: using it deals NO damage.
+       It arms B.skillSet; the next correct answer deals x3 (see
+       bResolve). It stays armed across enemy changes and is lost
+       on a wrong answer or when the run ends. */
+    B.skillSet = true;
+    B.last = { hit: false, skillSetNow: true, msg: "必殺技セット！ 次の正解でダメージ3倍" };
+    bLogPush("必殺技をセットした（次の正解でダメージ×3）");
   }
   renderBattleSession();
 }
@@ -4520,10 +4728,12 @@ function startBattle() {
   B = {
     rec: bLoadRecord(),
     level: 1, php: 100, combo: 0, gauge: 0,
-    kills: 0, answered: 0, correct: 0, bestComboRun: 0,
+    kills: 0, answered: 0, correct: 0, bestComboRun: 0, totalDmg: 0,
     enemy: null, card: null, revealed: false,
     pickedLabel: null, pickedOx: null, choicesOpen: false,
-    used: {}, orders: {}, phase: "fight", last: null, qShownAt: 0
+    used: {}, orders: {}, phase: "fight", last: null, qShownAt: 0,
+    skillSet: false, charging: false, hurtThisEnemy: false,
+    log: [], line: "", bossIntro: false, justSpawned: false
   };
   bSpawnEnemy();
   bDealQuestion();
@@ -4584,19 +4794,24 @@ function renderBattleSetup() {
   html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-b-back" aria-label="ホームに戻る">‹</button>' +
     '<h1 class="page serif" style="margin:0;font-size:22px">お遊びモード ― バトル</h1></div>';
   html += '<p class="sub" style="margin-top:8px">一問一答の問題でモンスターと戦うお遊びモードです。正解すると攻撃、まちがえるとダメージを受けます。結果は通常の学習記録（復習間隔）には混ぜず、この端末のバトル記録にだけ残ります。</p>';
+  var nextBoss = (Math.floor((rec.bestLevel || 0) / 5) + 1) * 5;
   html += '<section class="glass card"><div class="tiny dim b">あなたの称号</div>' +
-    '<div class="titlename">' + esc(rec.title) + '</div>' +
+    '<div style="margin-top:6px"><span class="titlebadge">🏆 ' + esc(rec.title) + '</span></div>' +
+    '<div class="emojistrip" aria-hidden="true">' + BATTLE_STAGES.map(function (s) { return "<span>" + s.emoji + "</span>"; }).join("") + '<span>🎁</span></div>' +
     '<div style="display:flex;gap:8px 16px;flex-wrap:wrap;margin-top:10px" class="small">' +
     '<span>プレイヤーLv <strong>' + rec.pLevel + '</strong></span>' +
     '<span>基本ダメージ <strong>' + (12 + rec.pLevel) + '</strong>（+コンボ×2）</span>' +
     '<span>累計撃破 <strong>' + rec.totalKills + '</strong>体</span>' +
     '<span>ボス撃破 <strong>' + rec.bossKills + '</strong>体</span></div>' +
     '<div class="bar" style="margin-top:10px"><i style="width:' + Math.min(100, Math.round(rec.xp / xpMax * 100)) + '%"></i></div>' +
-    '<div class="tiny dim" style="margin-top:5px">経験値 ' + rec.xp + ' / ' + xpMax + '（次のレベルまで） ・ ベスト到達レベル ' + (rec.bestLevel || "—") + ' ・ 最高コンボ ' + (rec.bestCombo || "—") + '</div></section>';
+    '<div class="tiny dim" style="margin-top:5px">経験値 ' + rec.xp + ' / ' + xpMax + '（次のレベルまで） ・ ベスト到達レベル ' + (rec.bestLevel || "—") + ' ・ 最高コンボ ' + (rec.bestCombo || "—") + '</div>' +
+    '<div class="tiny dim" style="margin-top:6px">次のボスは <strong>LEVEL ' + nextBoss + '</strong> に出現します（ボスは5レベルごと）。</div>' +
+    '<div style="margin-top:10px"><button type="button" class="smallbtn" id="btn-b-sound-setup">' + (rec.sound ? "🔊 サウンド ON" : "🔇 サウンド OFF") + '</button></div></section>';
   html += '<section class="glass card"><h2 style="font-size:16.5px">ルール</h2>' +
     '<p class="small dim" style="margin:6px 0 0;line-height:1.9">敵を倒すと次のレベルへ（進むときHP+20回復）。5レベルごとのボスはHP2倍・受けるダメージ-20%で、問題はランクA中心に出ます。' +
     '連続正解でコンボが伸びて威力アップ、5コンボ到達の一撃は会心（1.5倍）。10秒以内の早答えは+5ダメージ。' +
-    '正解でスキルゲージが溜まり、満タン（3つ）になると、問題に答える前に「必殺技（3倍ダメージ）」か「回復（HP+30）」のどちらかを使えます。' +
+    '正解でスキルゲージが溜まり、満タン（3つ）になると、問題に答える前に「必殺技」か「回復（HP+30）」を使えます。必殺技はセットするもので、セット後の最初の正解が3倍ダメージになります（間違えると消えます）。' +
+    '敵が「力をためている」ときに間違えると、受けるダメージが2倍（20）になります。ノーダメージで倒すとパーフェクト撃破で経験値+50%。たまに宝箱モンスター（HP半分・経験値2倍）も現れます。' +
     'レベル6以降の敵は攻撃を15%でかわします。あなたのHPが0になるとゲームオーバーです。</p>' +
     '<button type="button" class="bigbtn" id="btn-b-start" ' + (pool.length ? "" : "disabled") + '>バトルをはじめる（対象 ' + pool.length + '問）</button></section>';
   html += "</div>" + tabbarHtml("home");
@@ -4605,6 +4820,8 @@ function renderBattleSetup() {
   bindTabs();
   document.getElementById("btn-b-back").addEventListener("click", function () { view = { tab: "home" }; render(); window.scrollTo(0, 0); });
   document.getElementById("btn-b-start").addEventListener("click", startBattle);
+  var bsnd = document.getElementById("btn-b-sound-setup");
+  if (bsnd) bsnd.addEventListener("click", function () { bToggleSound(); renderBattleSetup(); });
 }
 function renderBattleSession() {
   if (!B) { view = { tab: "battle" }; renderBattleSetup(); return; }
@@ -4612,36 +4829,59 @@ function renderBattleSession() {
   var e = B.enemy, card = B.card, rec = B.rec;
   var isMcq = card.f === "mcq";
   var info = isMcq ? bDisplayInfo(card) : null;
+  /* one-shot animation flags, consumed by this render */
+  var spawnedAnim = !!B.justSpawned; B.justSpawned = false;
+  var bossIntroAnim = !!B.bossIntro; B.bossIntro = false;
   var html = '<div class="wrap rise" style="padding-bottom:40px">';
   html += '<div class="sess-head"><button type="button" class="xbtn" id="btn-b-exit" aria-label="バトルをやめてホームに戻る">✕</button>' +
     '<span class="tag a">LEVEL ' + B.level + (e.boss ? " ・ ボス戦" : "") + '</span>' +
-    '<span class="small dim b" style="margin-left:auto">撃破 ' + B.kills + '体 ・ 回答 ' + B.answered + '問</span></div>';
+    '<span class="small dim b" style="margin-left:auto">撃破 ' + B.kills + '体 ・ 回答 ' + B.answered + '問</span>' +
+    '<button type="button" class="smallbtn" id="btn-b-sound" aria-label="サウンドのオン・オフ">' + (rec.sound ? "🔊" : "🔇") + '</button></div>';
 
-  /* enemy card, with damage pop + shake on the hit render */
-  html += '<section class="glass card" style="margin-top:12px;position:relative">';
-  if (B.last && B.last.popText) html += '<span class="dmgpop' + (B.last.crit ? " crit" : "") + (B.last.heal ? " heal" : "") + '">' + esc(B.last.popText) + '</span>';
-  html += '<div class="enemyface' + (B.last && B.last.hit ? " shake" : "") + '" aria-hidden="true">' + (B.phase === "defeated" ? "💥" : e.emoji) + '</div>' +
+  /* enemy card: circular stage + aura, speech line, ghost HP bar */
+  var ePct = e.maxHp ? Math.max(0, Math.round(e.hp / e.maxHp * 100)) : 0;
+  var eGhost = (B.last && B.last.hit && B.last.dmg != null) ? Math.min(100, ePct + Math.round(B.last.dmg / e.maxHp * 100)) : ePct;
+  var faceCls = "enemyface" + (B.last && B.last.hit ? " shake" : "") + (B.phase === "defeated" ? " out" : spawnedAnim ? " in" : "");
+  html += '<section class="glass card enemycard ' + bTintClass(e) + '" style="margin-top:12px">';
+  if (bossIntroAnim) html += '<span class="bossbanner">⚠ BOSS 出現</span>';
+  if (B.last && B.last.popText) html += '<span class="dmgpop' + (B.last.crit ? " crit" : "") + (B.last.skill ? " skill" : "") + (B.last.heal ? " heal" : "") + (B.last.dodged ? " miss" : "") + '">' + esc(B.last.popText) + '</span>';
+  html += '<div class="enemystage"><span class="aura"></span><span class="ring"></span>' +
+    '<div class="' + faceCls + '" aria-hidden="true"><span class="efloat">' + (B.phase === "defeated" ? "💥" : e.emoji) + '</span></div></div>' +
     '<div style="text-align:center;margin-top:2px"><span class="b" style="font-size:16.5px">' + esc(e.name) + '</span>' +
-    (e.traitLabel ? '<div style="margin-top:4px"><span class="tag">' + esc(e.traitLabel) + '</span></div>' : "") + '</div>' +
-    '<div class="bar hpbar" style="margin-top:10px"><i class="enemy" style="width:' + (e.maxHp ? Math.max(0, Math.round(e.hp / e.maxHp * 100)) : 0) + '%"></i></div>' +
+    (B.line ? '<div style="margin-top:6px"><span class="speech">' + esc(B.line) + '</span></div>' : "") +
+    ((e.traitLabel || (B.charging && B.phase === "fight" && !B.revealed)) ? '<div style="margin-top:6px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap">' +
+      (e.traitLabel ? '<span class="tag">' + esc(e.traitLabel) + '</span>' : "") +
+      (B.charging && B.phase === "fight" && !B.revealed ? '<span class="tag warn">⚡ 力をためている！（間違えると被ダメージ2倍）</span>' : "") + '</div>' : "") + '</div>' +
+    '<div class="bar hpbar" style="margin-top:10px">' +
+    (eGhost > ePct ? '<i class="ghost enemy" style="--gw:' + eGhost + '%;--ge:' + ePct + '%;width:' + eGhost + '%"></i>' : "") +
+    '<i class="enemy" style="width:' + ePct + '%"></i><span class="ticks"></span></div>' +
     '<div class="tiny dim" style="text-align:center;margin-top:4px">敵HP ' + Math.max(0, e.hp) + ' / ' + e.maxHp + '</div></section>';
 
-  /* player card: HP, combo, skill gauge + skill buttons */
-  var gaugeDots = "";
-  for (var gi = 0; gi < BATTLE_GAUGE_MAX; gi++) gaugeDots += gi < B.gauge ? "●" : '<span class="off">●</span>';
+  /* player card: Lv badge, HP (ghost bar), combo, skill pips + buttons */
+  var pips = "";
+  for (var gi = 0; gi < BATTLE_GAUGE_MAX; gi++) pips += '<span class="pip' + (gi < B.gauge ? " on" : "") + '"></span>';
   var skillOn = B.gauge >= BATTLE_GAUGE_MAX && !B.revealed && B.phase === "fight";
-  html += '<section class="glass card" style="margin-top:12px">' +
-    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="b" style="font-size:14.5px">あなた（Lv' + rec.pLevel + '）</span>' +
-    (B.combo >= 2 ? '<span class="combopill">' + B.combo + '連続正解</span>' : "") +
+  var pPct = Math.max(0, B.php);
+  var pGhost = (B.last && B.last.tookDmg != null) ? Math.min(100, pPct + B.last.tookDmg) : pPct;
+  var pCls = "glass card playercard" + (B.last && B.last.tookDmg != null ? " hurt" : "") + (B.php <= 30 && B.phase === "fight" ? " lowhp" : "");
+  html += '<section class="' + pCls + '" style="margin-top:12px">' +
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="lvb"><small>LV</small><b>' + rec.pLevel + '</b></span>' +
+    '<span class="b" style="font-size:14.5px">あなた</span>' +
+    (B.combo >= 2 ? '<span class="combopill' + (B.last && B.last.hit ? " pop" : "") + '">' + B.combo + '連続正解</span>' : "") +
     (B.combo === 4 && B.phase === "fight" && !B.revealed ? '<span class="tag a">次の正解で会心の一撃！</span>' : "") +
     '<span class="tiny dim" style="margin-left:auto">攻撃力 ' + (12 + rec.pLevel + B.combo * 2) + '</span></div>' +
-    '<div class="bar hpbar" style="margin-top:8px"><i class="player" style="width:' + Math.max(0, B.php) + '%"></i></div>' +
+    '<div class="bar hpbar" style="margin-top:8px">' +
+    (pGhost > pPct ? '<i class="ghost player" style="--gw:' + pGhost + '%;--ge:' + pPct + '%;width:' + pGhost + '%"></i>' : "") +
+    '<i class="player" style="width:' + pPct + '%"></i><span class="ticks"></span></div>' +
     '<div class="tiny dim" style="margin-top:4px">HP ' + Math.max(0, B.php) + ' / 100</div>' +
-    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="tiny dim b">スキルゲージ</span><span class="gaugedots">' + gaugeDots + '</span>' +
-    (B.gauge >= BATTLE_GAUGE_MAX ? '<span class="tiny b" style="color:var(--accent)">満タン：答える前に使えます</span>' : '<span class="tiny dim">正解で+1、' + BATTLE_GAUGE_MAX + 'つで使用可</span>') + '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="tiny dim b">スキルゲージ</span><span class="gaugepips' + (B.gauge >= BATTLE_GAUGE_MAX ? " full" : "") + '">' + pips + '</span>' +
+    (B.skillSet ? '<span class="tiny b" style="color:var(--warn)">⚔️ 必殺技セット中</span>' : B.gauge >= BATTLE_GAUGE_MAX ? '<span class="tiny b" style="color:var(--accent)">満タン：答える前に使えます</span>' : '<span class="tiny dim">正解で+1、' + BATTLE_GAUGE_MAX + 'つで使用可</span>') + '</div>' +
+    (B.skillSet ? '<p class="small b" style="margin:8px 2px 0;color:var(--warn)">必殺技セット中：次の正解でダメージ3倍（間違えると消えます）</p>' : "") +
     '<div class="skillrow">' +
-    '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-atk" ' + (skillOn ? "" : "disabled") + '>必殺技<small>通常の3倍ダメージ</small></button>' +
-    '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-heal" ' + (skillOn ? "" : "disabled") + '>回復<small>HP +30</small></button></div>' +
+    (B.skillSet
+      ? '<button type="button" class="skillbtn set" id="btn-b-skill-atk" disabled>⚔️ 必殺技<small>セット中：次の正解で3倍</small></button>'
+      : '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-atk" ' + (skillOn ? "" : "disabled") + '>⚔️ 必殺技<small>次の正解でダメージ3倍</small></button>') +
+    '<button type="button" class="skillbtn' + (skillOn ? " on" : "") + '" id="btn-b-skill-heal" ' + (skillOn ? "" : "disabled") + '>✚ 回復<small>HP +30</small></button></div>' +
     (B.last && B.last.msg ? '<p class="small b" style="margin:10px 2px 0;color:var(--accent)">' + esc(B.last.msg) + '</p>' : "") +
     '</section>';
 
@@ -4664,10 +4904,10 @@ function renderBattleSession() {
     }
     var outcome = "";
     if (okAns) {
-      if (B.last.dodged) outcome = "攻撃は かわされた！（ダメージなし）";
-      else if (B.last.dmg != null) outcome = (B.last.crit ? "会心の一撃！ " : "") + e.name + "に " + B.last.dmg + " ダメージ" + (B.last.fast ? "（早答えボーナス+5込み）" : "");
+      if (B.last.dodged) outcome = "攻撃は かわされた！（ダメージなし）" + (B.last.skill ? " 必殺技も消費されました" : "");
+      else if (B.last.dmg != null) outcome = (B.last.skill ? "必殺技！ " : "") + (B.last.crit ? "会心の一撃！ " : "") + e.name + "に " + B.last.dmg + " ダメージ" + (B.last.fast ? "（早答えボーナス+5込み）" : "");
     } else if (B.last.tookDmg != null) {
-      outcome = "あなたは " + B.last.tookDmg + " ダメージを受けた";
+      outcome = "あなたは " + B.last.tookDmg + " ダメージを受けた" + (B.last.chargedHit ? "（力をためた一撃！）" : "") + (B.last.skillLost ? " 必殺技が消えてしまった…" : "");
     }
     if (outcome) html += '<p class="small b" style="margin-top:8px">' + esc(outcome) + '</p>';
     if (isMcq) {
@@ -4694,6 +4934,7 @@ function renderBattleSession() {
   if (B.phase === "defeated") {
     html += '<section class="glass card" style="margin-top:12px;text-align:center">' +
       '<p class="verdict ok" style="font-size:19px">' + esc(e.name) + 'を たおした！</p>' +
+      (B.last.perfect ? '<p class="small b" style="margin-top:8px;color:var(--good)">✨ パーフェクト撃破！（ノーダメージ・経験値+50%）</p>' : "") +
       '<p class="small dim" style="margin-top:8px;line-height:1.9">経験値 +' + (B.last.xpGain || 0) +
       (B.last.levelUp ? '<br><span class="b" style="color:var(--accent)">プレイヤーレベルが ' + rec.pLevel + ' に上がった！ 基本ダメージが上がりました</span>' : "") +
       '<br>次のレベルへ進むと HP が +20 回復します（上限100）</p>' +
@@ -4712,10 +4953,19 @@ function renderBattleSession() {
   } else {
     html += '<button type="button" class="bigbtn" id="btn-b-next">次の問題へ ›</button>';
   }
+
+  /* battle log: latest 3 entries, newest first */
+  if (B.log && B.log.length) {
+    var recent = B.log.slice(-3).reverse();
+    html += '<section class="glass card battlelog"><div class="tiny dim b" style="margin-bottom:2px">戦闘ログ</div>' +
+      recent.map(function (t) { return '<div class="ll">' + esc(t) + '</div>'; }).join("") + '</section>';
+  }
   html += '</div>';
   appEl().innerHTML = html;
   applyViewSlide();
   document.getElementById("btn-b-exit").addEventListener("click", exitBattle);
+  var bsnd2 = document.getElementById("btn-b-sound");
+  if (bsnd2) bsnd2.addEventListener("click", function () { bToggleSound(); renderBattleSession(); });
   var sk1 = document.getElementById("btn-b-skill-atk");
   if (sk1) sk1.addEventListener("click", function () { bUseSkill("attack"); });
   var sk2 = document.getElementById("btn-b-skill-heal");
@@ -4733,7 +4983,7 @@ function renderBattleDone() {
   if (!B) { view = { tab: "home" }; renderHome(); return; }
   var rec = B.rec;
   var rate = B.answered ? Math.round(B.correct / B.answered * 100) : 0;
-  var html = '<div class="wrap rise"><section class="glass card" style="margin-top:22px;text-align:center">' +
+  var html = '<div class="wrap rise"><section class="glass card donetint" style="margin-top:22px;text-align:center">' +
     '<div style="font-size:52px" aria-hidden="true">💀</div>' +
     '<h2 class="serif" style="font-size:22px;margin-top:6px">ゲームオーバー</h2>' +
     '<p class="dim" style="margin:8px 0 0">LEVEL ' + B.level + ' の ' + esc(B.enemy ? B.enemy.name : "") + ' に敗れました</p>' +
@@ -4741,7 +4991,9 @@ function renderBattleDone() {
     '<span class="pill on"><span class="dot"></span>到達レベル <strong>' + B.level + '</strong></span>' +
     '<span class="pill"><span class="dot"></span>撃破 <strong>' + B.kills + '</strong>体</span>' +
     '<span class="pill"><span class="dot"></span>回答 <strong>' + B.answered + '</strong>問</span>' +
-    '<span class="pill"><span class="dot"></span>正答率 <strong>' + rate + '%</strong></span></div>' +
+    '<span class="pill"><span class="dot"></span>正答率 <strong>' + rate + '%</strong></span>' +
+    '<span class="pill"><span class="dot"></span>最大コンボ <strong>' + B.bestComboRun + '</strong></span>' +
+    '<span class="pill"><span class="dot"></span>総ダメージ <strong>' + B.totalDmg + '</strong></span></div>' +
     '<p class="small dim" style="margin-top:14px;line-height:1.8">バトル記録: ベスト到達レベル ' + rec.bestLevel + ' ・ 累計撃破 ' + rec.totalKills + '体 ・ プレイヤーLv ' + rec.pLevel + ' ・ 称号「' + esc(rec.title) + '」<br>この結果は学習記録には残りません。</p>' +
     '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap"><button type="button" class="bigbtn" id="btn-b-again" style="margin-top:0;flex:1">もう一度</button>' +
     '<button type="button" class="bigbtn ghost" id="btn-b-home" style="margin-top:0;flex:1">ホームへ</button></div></section></div>';

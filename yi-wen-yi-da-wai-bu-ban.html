@@ -1536,10 +1536,23 @@ function buildTodayPlan(deckSel) {
   var duePool = (deckSel === "keisan" ? scopeCards("keisan") : CARDS).filter(drillable);
   var mainPool = (deckSel === "all" ? CARDS : scopeCards(deckSel)).filter(drillable);
   var picked = [], used = {};
-  function take(list, cap) {
+  /* Same-question guard (2026-11-16, user feedback: 今日のタスクに同じ
+     問題が多すぎる): the card set holds duplicate question texts under
+     different ids (clone batches and same-stem variants from different
+     sources). Within one plan, a question text may appear only once,
+     and a fresh pick whose text matches an already-attempted card is
+     skipped so a twin does not resurface as "new" the next day. */
+  function normQ(c) { return String(c.q || "").replace(/\s+/g, ""); }
+  var usedQ = {};
+  var attemptedQ = {};
+  CARDS.forEach(function (c) { var p = prog(c.id); if (p && p.a > 0) attemptedQ[normQ(c)] = true; });
+  function take(list, cap, freshOnly) {
     for (var i = 0; i < list.length && picked.length < target && cap > 0; i++) {
       var c = list[i]; if (used[c.id]) continue;
-      used[c.id] = true; picked.push(c); cap--;
+      var q = normQ(c);
+      if (usedQ[q]) continue;
+      if (freshOnly && attemptedQ[q]) continue;
+      used[c.id] = true; usedQ[q] = true; picked.push(c); cap--;
     }
   }
   /* Yesterday's misses lead the plan (翌朝リベンジ): cards whose last
@@ -1563,8 +1576,8 @@ function buildTodayPlan(deckSel) {
   var nWeak = picked.length - nRevenge - nDue;
   var freshAB = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && (c.rk === "A" || c.rk === "B"); });
   var freshC = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && c.rk === "C"; });
-  take(interleaveByChapter(freshAB), target);
-  take(interleaveByChapter(freshC), target);
+  take(interleaveByChapter(freshAB), target, true);
+  take(interleaveByChapter(freshC), target, true);
   var nFresh = picked.length - nRevenge - nDue - nWeak;
   var review = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && p && p.a > 0 && !p.m; });
   review.sort(function (a, b) { return (prog(a.id).nr || Infinity) - (prog(b.id).nr || Infinity); });

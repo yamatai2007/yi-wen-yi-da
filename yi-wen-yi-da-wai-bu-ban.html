@@ -3180,8 +3180,8 @@ function isHeldCard(c) { return !!c.tp && c.tp.indexOf("繰延ヘッジ") >= 0; 
    and only chapters whose lectures are COMPLETE are served. Unlearned
    chapters stay in the data (search / dictionary still show them) but
    never enter any question pool; their chapter rows render disabled.
-   Learned set (2026-11-17): theory 第1〜11章・第21〜23章 (units complete);
-   keisan 計算第1〜6・8〜10・12・14〜19章 (計1〜11 complete).
+   Learned set (2026-11-19): theory 第1〜11章・第21〜23章 (units complete);
+   keisan 計算第1〜6・8〜10・12・14〜19・21・22章 (計1〜13 complete).
    Registry: goal hidden_files/learned_chapters.md — when a unit completes,
    add its textbook chapters here and bump the sw cache version. */
 var LEARNED_CHAPTERS = {
@@ -3190,7 +3190,8 @@ var LEARNED_CHAPTERS = {
   "第21章": 1, "第22章": 1, "第23章": 1,
   "計算第1章": 1, "計算第2章": 1, "計算第3章": 1, "計算第4章": 1, "計算第5章": 1, "計算第6章": 1,
   "計算第8章": 1, "計算第9章": 1, "計算第10章": 1, "計算第12章": 1,
-  "計算第14章": 1, "計算第15章": 1, "計算第16章": 1, "計算第17章": 1, "計算第18章": 1, "計算第19章": 1
+  "計算第14章": 1, "計算第15章": 1, "計算第16章": 1, "計算第17章": 1, "計算第18章": 1, "計算第19章": 1,
+  "計算第21章": 1, "計算第22章": 1
 };
 function isUnlearnedCard(c) { return !LEARNED_CHAPTERS[c.ch]; }
 /* 実践 (mcq2, "pick 2 of 4") cards live ONLY in the 実践 mode below: they

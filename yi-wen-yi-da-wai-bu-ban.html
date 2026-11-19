@@ -1541,59 +1541,77 @@ function buildTodayPlan(deckSel) {
      different ids (clone batches and same-stem variants from different
      sources). Within one plan, a question text may appear only once,
      and a fresh pick whose text matches an already-attempted card is
-     skipped so a twin does not resurface as "new" the next day. */
+     skipped so a twin does not resurface as "new" the next day.
+     Twin cooldown (2026-11-18): the same skip now applies to every
+     pool when the twin (a different id with the same text) was answered
+     within the last 3 days, so clones stop alternating day after day. */
   function normQ(c) { return String(c.q || "").replace(/\s+/g, ""); }
   var usedQ = {};
   var attemptedQ = {};
-  CARDS.forEach(function (c) { var p = prog(c.id); if (p && p.a > 0) attemptedQ[normQ(c)] = true; });
+  var recentQ = {};
+  CARDS.forEach(function (c) {
+    var p = prog(c.id); if (!p || !(p.a > 0)) return;
+    var q = normQ(c); attemptedQ[q] = true;
+    if (!recentQ[q] || (p.ls || 0) > recentQ[q].ls) recentQ[q] = { id: c.id, ls: p.ls || 0 };
+  });
   function take(list, cap, freshOnly) {
     for (var i = 0; i < list.length && picked.length < target && cap > 0; i++) {
       var c = list[i]; if (used[c.id]) continue;
       var q = normQ(c);
       if (usedQ[q]) continue;
       if (freshOnly && attemptedQ[q]) continue;
+      var rq = recentQ[q];
+      if (rq && rq.id !== c.id && now - rq.ls < 3 * DAY_MS) continue;
       used[c.id] = true; usedQ[q] = true; picked.push(c); cap--;
     }
   }
+  function takeCount(list, cap, freshOnly) { var b = picked.length; take(list, cap, freshOnly); return picked.length - b; }
   /* Yesterday's misses lead the plan (翌朝リベンジ): cards whose last
      answer on the previous study day was × or あやふや are placed at
      the head as a plan-ordering priority only — the review-interval
      records are untouched, and answering them records as usual. */
   var revenge = revengeCards(deckSel);
-  /* Missed-card families are capped (2026-11-12, user feedback: 間違えた
-     問題が優先されすぎ): yesterday's revenge takes at most a quarter of
-     the plan, and revenge + weak together at most half, so fresh cards
-     reliably get room. Cards past the caps stay eligible for the
-     backfill below, so the plan never comes back short. */
-  take(revenge, Math.max(1, Math.floor(target / 4)));
-  var nRevenge = picked.length;
+  var freshAB = mainPool.filter(function (c) { var p = prog(c.id); return (!p || p.a === 0) && (c.rk === "A" || c.rk === "B"); });
+  var freshC = mainPool.filter(function (c) { var p = prog(c.id); return (!p || p.a === 0) && c.rk === "C"; });
   var due = duePool.filter(function (c) { return isDue(c, now); }).sort(function (a, b) { return (prog(a.id).nr || 0) - (prog(b.id).nr || 0); });
-  take(due, Math.max(1, Math.floor(target / 2)));
-  var nDue = picked.length - nRevenge;
-  var weak = mainPool.filter(function (c) { return !used[c.id] && isWeak(c); });
-  weak.sort(function (a, b) { return (prog(b.id).ls || 0) - (prog(a.id).ls || 0); });
-  take(weak, Math.max(0, Math.floor(target / 2) - nRevenge));
-  var nWeak = picked.length - nRevenge - nDue;
-  var freshAB = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && (c.rk === "A" || c.rk === "B"); });
-  var freshC = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && (!p || p.a === 0) && c.rk === "C"; });
-  take(interleaveByChapter(freshAB), target, true);
-  take(interleaveByChapter(freshC), target, true);
-  var nFresh = picked.length - nRevenge - nDue - nWeak;
-  var review = mainPool.filter(function (c) { var p = prog(c.id); return !used[c.id] && p && p.a > 0 && !p.m; });
+  var weak = mainPool.filter(function (c) { return isWeak(c); });
+  /* Weak cards rotate oldest-first: newest-first kept re-serving the
+     cards missed most recently (already covered by revenge and due),
+     while older weak cards waited at the tail forever. */
+  weak.sort(function (a, b) { return (prog(a.id).ls || 0) - (prog(b.id).ls || 0); });
+  var review = mainPool.filter(function (c) { var p = prog(c.id); return p && p.a > 0 && !p.m; });
   review.sort(function (a, b) { return (prog(a.id).nr || Infinity) - (prog(b.id).nr || Infinity); });
-  take(review, target);
-  var nReview = picked.length - nRevenge - nDue - nWeak - nFresh;
+  /* Repeat budget (2026-11-18, user feedback: 今日のタスクが同じ問題
+     ばっか出る). The 2026-11-12 rule — yesterday's revenge at most a
+     quarter of the plan, misses + weak at most half, fresh cards
+     always get in — is now enforced across ALL repeat pools (revenge
+     + due + weak + review). Due and review used to sit outside the
+     budget and the backfill ignored it, so on ordinary days the
+     repeat pools filled the whole plan before fresh was reached and
+     the plan came back all repeats. Fresh picks now claim their half
+     first; repeats may pass the budget only in the final backfill,
+     when nothing fresher is left to serve. */
+  var half = Math.floor(target / 2);
+  var nRevenge = takeCount(revenge, Math.max(1, Math.floor(target / 4)));
+  var revengeItems = picked.slice();
+  var nFresh = takeCount(interleaveByChapter(freshAB), Math.max(0, Math.ceil(target / 2) - picked.length), true);
+  var beforeDue = picked.length;
+  var nDue = takeCount(due, Math.max(0, half - nRevenge));
+  var dueItems = picked.slice(beforeDue);
+  var nWeak = takeCount(weak, Math.max(0, half - nRevenge - nDue));
+  nFresh += takeCount(interleaveByChapter(freshAB), target, true);
+  nFresh += takeCount(interleaveByChapter(freshC), target, true);
+  var nReview = takeCount(review, target);
   /* Backfill: fill whatever room is left with due cards first, then
      weak and revenge cards past their caps, so the plan never comes
      back short while material is still waiting. */
-  var beforeBackfill = picked.length;
-  take(due, target);
-  var nDueTotal = nDue + (picked.length - beforeBackfill);
-  var beforeWeakBackfill = picked.length;
-  take(weak, target);
+  var nDueTotal = nDue + takeCount(due, target);
+  var nWeakTotal = nWeak + takeCount(weak, target);
   take(revenge, target);
-  var nWeakTotal = nWeak + (picked.length - beforeWeakBackfill);
-  var headPart = picked.slice(0, nRevenge + nDue), rest = interleaveByChapter(picked.slice(nRevenge + nDue));
+  var headIds = {};
+  revengeItems.concat(dueItems).forEach(function (c) { headIds[c.id] = true; });
+  var headPart = picked.filter(function (c) { return headIds[c.id]; });
+  var rest = interleaveByChapter(picked.filter(function (c) { return !headIds[c.id]; }));
   return { items: headPart.concat(rest), target: target, breakdown: { revenge: nRevenge, due: nDueTotal, weak: nWeakTotal, fresh: nFresh, review: nReview } };
 }
 /* ---------------- weak-topic focus drill ----------------

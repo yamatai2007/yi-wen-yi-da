@@ -3775,7 +3775,7 @@ function memoBtnHtml(card) {
   var mid = MEMO_LIB_IDS[e[0]]; if (mid == null) return "";
   var inner = "講義メモで周辺を確認" + '<span class="ml-l">' + esc(label) + "</span>";
   if (e[1] && e[1] !== "メモ全体") inner += '<span class="ml-s">' + (e[2] === 2 ? "該当節：" : "目安の節：") + esc(e[1]) + "</span>";
-  return '<a class="bigbtn ghost memolink" style="margin-top:10px" href="../jiang-yi-raiburari/#memo/' + mid + '" target="_blank" rel="noreferrer" aria-label="講義メモで周辺を確認（講義ライブラリで「' + esc(label) + '」を開く）">' + inner + "</a>";
+  return '<a class="bigbtn ghost memolink" style="margin-top:10px" href="https://muse.ai/library/artifacts/jiang-yi-raiburari#memo/' + mid + '" target="_blank" rel="noreferrer" aria-label="講義メモで周辺を確認（講義ライブラリで「' + esc(label) + '」を開く）">' + inner + "</a>";
 }
 function renderSession() {
   if (!S) { view = { tab: "home" }; renderHome(); return; }

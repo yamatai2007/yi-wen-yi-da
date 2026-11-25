@@ -635,6 +635,9 @@ try { var _dm = JSON.parse(localStorage.getItem("qaext_local_v1") || "{}"); var 
   .memobody .mm-h3{ font-size:15px; font-weight:700; margin:16px 0 6px; }
   .memobody .mm-h4{ font-size:14px; font-weight:700; margin:12px 0 4px; color:var(--dim); }
   .memobody .mm-target{ background:var(--warn-soft); border-radius:6px; box-shadow:0 0 0 4px var(--warn-soft); }
+  .memobody .mm-secmark{ background:var(--warn-soft); border:1px solid var(--warn); border-radius:14px; padding:2px 14px 10px; margin:12px -8px 4px; box-shadow:inset 4px 0 0 var(--warn); }
+  .memobody .mm-secmark .mm-h2:first-child{ margin-top:10px; padding-top:0; border-top:0; }
+  .memobody .mm-secmark .mm-target{ background:transparent; box-shadow:none; }
   .memobody .mm-p{ margin:6px 0; }
   .memobody .mm-lead{ margin:12px 0 4px; }
   .memobody ul.mm-ul, .memobody ol.mm-ol{ margin:4px 0 8px; padding-left:22px; }
@@ -1561,6 +1564,60 @@ function avgSecPerQuestion() {
   if (n < 10 || sec <= 0) return { sec: 30, estimated: true };
   return { sec: sec / n, estimated: false };
 }
+/* Seeded PRNG (mulberry32) with an FNV-1a string hash: the fresh-card
+   order below is shuffled with a seed taken from the study date, so
+   the plan stays identical across re-renders within one day but the
+   serving order rotates day to day. */
+function seedHash(str) {
+  var h = 2166136261;
+  for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function seededRng(seed) {
+  var a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    var t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffleSeeded(a, rng) {
+  var r = a.slice();
+  for (var i = r.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = r[i]; r[i] = r[j]; r[j] = t; }
+  return r;
+}
+/* Stratified fresh order (v46, 2026-11-25, user feedback: 今日のタスク
+   の問題が偏っている). The old fresh path consumed
+   interleaveByChapter(freshPool) from the head: chapters always in
+   fixed CHAPTER_ORDER and cards in raw data (batch) order within a
+   chapter, so the earliest chapters and the earliest topics of each
+   chapter supplied nearly every fresh card until they drained, and
+   the serving frontier crept forward in data order day after day.
+   Fresh picks are now grouped by topic (chapter + base topic),
+   shuffled inside each topic and across topics with the day-seeded
+   RNG, then dealt round-robin one per topic, so a day's fresh slots
+   spread across as many chapters and topics as the pool offers and
+   the order rotates daily. All existing guards in take() (same-text
+   once per plan, twin skip, 3-day twin cooldown) are untouched. */
+function stratifiedFreshOrder(list, seedStr) {
+  var rng = seededRng(seedHash(seedStr));
+  var byTopic = {}, keys = [];
+  list.forEach(function (c) {
+    var k = c.ch + "::" + baseTopic(c.tp);
+    if (!byTopic[k]) { byTopic[k] = []; keys.push(k); }
+    byTopic[k].push(c);
+  });
+  keys = shuffleSeeded(keys, rng);
+  var groups = keys.map(function (k) { return shuffleSeeded(byTopic[k], rng); });
+  var out = [], more = true;
+  while (more) {
+    more = false;
+    groups.forEach(function (g) { if (g.length) { out.push(g.shift()); more = true; } });
+  }
+  return out;
+}
 function buildTodayPlan(deckSel) {
   var now = Date.now();
   var target = Math.min(20, Math.max(5, Math.round((state.settings.dailyMinutes || 15) / 1.5)));
@@ -1628,13 +1685,13 @@ function buildTodayPlan(deckSel) {
   var half = Math.floor(target / 2);
   var nRevenge = takeCount(revenge, Math.max(1, Math.floor(target / 4)));
   var revengeItems = picked.slice();
-  var nFresh = takeCount(interleaveByChapter(freshAB), Math.max(0, Math.ceil(target / 2) - picked.length), true);
+  var nFresh = takeCount(stratifiedFreshOrder(freshAB, todayStr() + "|" + deckSel + "|AB"), Math.max(0, Math.ceil(target / 2) - picked.length), true);
   var beforeDue = picked.length;
   var nDue = takeCount(due, Math.max(0, half - nRevenge));
   var dueItems = picked.slice(beforeDue);
   var nWeak = takeCount(weak, Math.max(0, half - nRevenge - nDue));
-  nFresh += takeCount(interleaveByChapter(freshAB), target, true);
-  nFresh += takeCount(interleaveByChapter(freshC), target, true);
+  nFresh += takeCount(stratifiedFreshOrder(freshAB, todayStr() + "|" + deckSel + "|AB"), target, true);
+  nFresh += takeCount(stratifiedFreshOrder(freshC, todayStr() + "|" + deckSel + "|C"), target, true);
   var nReview = takeCount(review, target);
   /* Backfill: fill whatever room is left with due cards first, then
      weak and revenge cards past their caps, so the plan never comes
@@ -2042,6 +2099,29 @@ function memoSheetEls() {
     body: document.getElementById("memosheet-body")
   };
 }
+/* Section marking (v46, 2026-11-25, user feedback: 講義メモ参照で
+   該当箇所をマーキングしてほしい). v45 tinted only the section
+   heading, which was easy to miss in a long memo. Now the whole
+   section — the heading plus every following sibling up to the next
+   [data-sec] heading — is wrapped in a single .mm-secmark block, so
+   the relevant range reads as one marked region and stays marked
+   until the sheet closes. The body HTML is rebuilt from MEMO_TEXTS
+   on every open, so the wrap never accumulates. */
+function markMemoSection(head) {
+  var parent = head.parentNode;
+  if (!parent) return null;
+  var wrap = document.createElement("div");
+  wrap.className = "mm-secmark";
+  parent.insertBefore(wrap, head);
+  var node = head;
+  while (node) {
+    var next = node.nextSibling;
+    if (node !== head && node.nodeType === 1 && node.hasAttribute && node.hasAttribute("data-sec")) break;
+    wrap.appendChild(node);
+    node = next;
+  }
+  return wrap;
+}
 function openMemoSheet(card) {
   if (!card) return;
   var e = memoLinkFor(card);
@@ -2067,7 +2147,8 @@ function openMemoSheet(card) {
     for (var i = 0; i < heads.length; i++) {
       if (heads[i].getAttribute("data-sec") === sec) {
         heads[i].classList.add("mm-target");
-        els.body.scrollTop = Math.max(0, heads[i].offsetTop - 10);
+        var wrap = markMemoSection(heads[i]);
+        els.body.scrollTop = Math.max(0, (wrap || heads[i]).offsetTop - 10);
         break;
       }
     }
